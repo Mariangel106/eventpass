@@ -1,0 +1,1200 @@
+{
+  "name": "WF04 - Administración de eventos",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "EventPass · Administración de eventos",
+        "formDescription": "Solo administradores. CREATE crea un evento; READ lo consulta; UPDATE cambia solo los campos que llenes; CANCEL y CLOSE aplican borrado lógico.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "accion",
+              "requiredField": true,
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "CREATE"
+                  },
+                  {
+                    "option": "READ"
+                  },
+                  {
+                    "option": "UPDATE"
+                  },
+                  {
+                    "option": "CANCEL"
+                  },
+                  {
+                    "option": "CLOSE"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "evento_id",
+              "requiredField": false,
+              "placeholder": "Obligatorio para READ, UPDATE, CANCEL y CLOSE (ej. EVT-...)"
+            },
+            {
+              "fieldLabel": "nombre",
+              "requiredField": false,
+              "placeholder": "Nombre del evento"
+            },
+            {
+              "fieldLabel": "categoria",
+              "requiredField": false,
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "(sin cambio)"
+                  },
+                  {
+                    "option": "Tecnología"
+                  },
+                  {
+                    "option": "Educación"
+                  },
+                  {
+                    "option": "Cultura"
+                  },
+                  {
+                    "option": "Deportes"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "descripcion",
+              "requiredField": false,
+              "fieldType": "textarea",
+              "placeholder": "Descripción completa"
+            },
+            {
+              "fieldLabel": "fecha",
+              "requiredField": false,
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "hora",
+              "requiredField": false,
+              "placeholder": "HH:MM (24 h), ej. 18:30"
+            },
+            {
+              "fieldLabel": "lugar",
+              "requiredField": false,
+              "placeholder": "Sede o enlace"
+            },
+            {
+              "fieldLabel": "capacidad",
+              "requiredField": false,
+              "fieldType": "number",
+              "placeholder": "Número de cupos"
+            },
+            {
+              "fieldLabel": "imagen_url",
+              "requiredField": false,
+              "placeholder": "URL de imagen (opcional)"
+            },
+            {
+              "fieldLabel": "organizador",
+              "requiredField": false,
+              "placeholder": "Organizador"
+            },
+            {
+              "fieldLabel": "estado",
+              "requiredField": false,
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "(sin cambio)"
+                  },
+                  {
+                    "option": "BORRADOR"
+                  },
+                  {
+                    "option": "PUBLICADO"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "basicAuth"
+      },
+      "id": "43c5c5ad-2b4a-47a8-83ba-539f66f2e552",
+      "name": "Formulario de administración",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        180
+      ],
+      "webhookId": "beb2daa5-7beb-6adc-7c48-cafeba010a53",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "osaAgErN5ejaC8cb",
+          "name": "EventPass Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1u-nvxd9AU-8gOrG1L-RkkGm_SnV1rPLaWbE8gVmHgNM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Eventos"
+        },
+        "options": {}
+      },
+      "id": "738f4298-c1f4-4829-af00-54e3e15ce763",
+      "name": "Leer Eventos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        180
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst SIN = '(sin cambio)';\nconst IMG = '/images/hero_eventpass_conference_1792500747135.jpg';\nconst f = $('Formulario de administración').first().json;\nconst eventos = rows('Leer Eventos', 'evento_id');\nconst COLS = [\"evento_id\",\"nombre\",\"categoria\",\"descripcion\",\"fecha\",\"hora\",\"lugar\",\"capacidad\",\"imagen_url\",\"organizador\",\"estado\",\"fecha_creacion\",\"fecha_actualizacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst val = (k) => { const x = norm(f[k]); return x === SIN ? '' : x; };\nconst accion = val('accion').toUpperCase();\nconst out = (route, ok, mensaje, extra = {}) => [{ json: { route, ok, accion, mensaje, ...extra } }];\nconst err = (m, extra) => out('responder', false, m, extra);\nconst validarCampos = (row) => {\n  const cap = Number(row.capacidad);\n  if (!Number.isInteger(cap) || cap <= 0) return 'La capacidad debe ser un entero mayor a 0.';\n  if (!/^\\d{2}:\\d{2}$/.test(row.hora)) return 'La hora debe tener formato HH:MM.';\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(row.fecha)) return 'La fecha debe tener formato AAAA-MM-DD.';\n  return '';\n};\n\nif (accion === 'CREATE') {\n  const faltan = ['nombre', 'categoria', 'descripcion', 'fecha', 'hora', 'lugar', 'capacidad', 'organizador'].filter((k) => !val(k));\n  if (faltan.length) return err('Faltan campos obligatorios: ' + faltan.join(', '));\n  const row = { evento_id: genId('EVT'), nombre: val('nombre'), categoria: val('categoria'), descripcion: val('descripcion'),\n    fecha: val('fecha'), hora: val('hora').padStart(5, '0'), lugar: val('lugar'), capacidad: String(Number(val('capacidad'))),\n    imagen_url: val('imagen_url') || IMG, organizador: val('organizador'), estado: val('estado') || 'BORRADOR',\n    fecha_creacion: ahora, fecha_actualizacion: ahora };\n  const problema = validarCampos(row);\n  if (problema) return err(problema);\n  return out('crear', true, `Evento ${row.evento_id} creado con estado ${row.estado}.`, { row, estado_anterior: '' });\n}\n\nconst id = val('evento_id');\nif (!id) return err('Debes indicar el evento_id para ' + (accion || 'esta acción') + '.');\nconst ev = eventos.find((e) => norm(e.evento_id) === id);\nif (!ev) return err(`No existe un evento con id ${id}.`, { evento_id: id });\n\nif (accion === 'READ') return out('responder', true, 'Consulta de evento.', { evento: pick(ev), evento_id: id });\nif (ev.estado === 'CANCELADO') return err('El evento está CANCELADO y no admite cambios.', { evento_id: id });\n\nconst row = { ...pick(ev), fecha_actualizacion: ahora };\nif (accion === 'UPDATE') {\n  for (const k of ['nombre', 'categoria', 'descripcion', 'fecha', 'hora', 'lugar', 'capacidad', 'imagen_url', 'organizador', 'estado']) {\n    if (val(k)) row[k] = k === 'capacidad' ? String(Number(val(k))) : k === 'hora' ? val(k).padStart(5, '0') : val(k);\n  }\n  const problema = validarCampos(row);\n  if (problema) return err(problema, { evento_id: id });\n} else if (accion === 'CANCEL') {\n  row.estado = 'CANCELADO';\n} else if (accion === 'CLOSE') {\n  row.estado = 'CERRADO';\n} else {\n  return err('Acción no soportada.', { evento_id: id });\n}\nreturn out('actualizar', true, `Evento ${id}: ${ev.estado} → ${row.estado} (${accion}).`,\n  { row, estado_anterior: ev.estado, notificar: accion === 'CANCEL' });\n"
+      },
+      "id": "c0909d2b-8a6d-4819-84f3-1b128f65fc28",
+      "name": "Validar formulario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "432e4820-abe1-4a45-b8e4-00eee8b9a788",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crear",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "crear"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c8b56522-93a1-41a9-ab25-bd72c5cdb3ad",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "actualizar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "actualizar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "otro"
+        }
+      },
+      "id": "ffb8895d-f024-4263-aea8-9c58e5c9c7e0",
+      "name": "Según acción",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        720,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"evento_id\",\"nombre\",\"categoria\",\"descripcion\",\"fecha\",\"hora\",\"lugar\",\"capacidad\",\"imagen_url\",\"organizador\",\"estado\",\"fecha_creacion\",\"fecha_actualizacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar formulario').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "86dedac8-67b8-4a86-a64e-c42c8a1e2eb2",
+      "name": "Fila: Crear evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1u-nvxd9AU-8gOrG1L-RkkGm_SnV1rPLaWbE8gVmHgNM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Eventos"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "evento_id",
+              "displayName": "evento_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "categoria",
+              "displayName": "categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "descripcion",
+              "displayName": "descripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hora",
+              "displayName": "hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lugar",
+              "displayName": "lugar",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "capacidad",
+              "displayName": "capacidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "imagen_url",
+              "displayName": "imagen_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "organizador",
+              "displayName": "organizador",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_creacion",
+              "displayName": "fecha_creacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_actualizacion",
+              "displayName": "fecha_actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "846917a1-6c6a-460d-99b7-187f403c3068",
+      "name": "Crear evento",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"evento_id\",\"nombre\",\"categoria\",\"descripcion\",\"fecha\",\"hora\",\"lugar\",\"capacidad\",\"imagen_url\",\"organizador\",\"estado\",\"fecha_creacion\",\"fecha_actualizacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar formulario').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "7f526375-0860-431d-9230-8a04f981fb7d",
+      "name": "Fila: Actualizar evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1u-nvxd9AU-8gOrG1L-RkkGm_SnV1rPLaWbE8gVmHgNM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Eventos"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "evento_id"
+          ],
+          "schema": [
+            {
+              "id": "evento_id",
+              "displayName": "evento_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "categoria",
+              "displayName": "categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "descripcion",
+              "displayName": "descripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hora",
+              "displayName": "hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lugar",
+              "displayName": "lugar",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "capacidad",
+              "displayName": "capacidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "imagen_url",
+              "displayName": "imagen_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "organizador",
+              "displayName": "organizador",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_creacion",
+              "displayName": "fecha_creacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_actualizacion",
+              "displayName": "fecha_actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "evento_id"
+      },
+      "id": "26e760dd-cc5c-4b8a-8afb-1783603f33fa",
+      "name": "Actualizar evento",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"auditoria_id\",\"evento_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const v = $('Validar formulario').first().json;\n  return { auditoria_id: `AUD-${Date.now().toString(36).toUpperCase()}`, evento_id: v.row?.evento_id || v.evento_id || '',\n    accion: v.accion || 'DESCONOCIDA', fecha: new Date().toISOString(), resultado: v.ok ? 'OK' : 'ERROR', detalle: v.mensaje };\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "59c4c975-8427-46dc-84e4-482d18f6f9f8",
+      "name": "Fila: Auditoría eventos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1u-nvxd9AU-8gOrG1L-RkkGm_SnV1rPLaWbE8gVmHgNM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Auditoria_Eventos"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "auditoria_id",
+              "displayName": "auditoria_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evento_id",
+              "displayName": "evento_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "accion",
+              "displayName": "accion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalle",
+              "displayName": "detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "9da92845-d39f-49e2-8a05-c369c746985f",
+      "name": "Auditoría eventos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ (() => { const v = $('Validar formulario').first().json; const datos = v.row || v.evento; return '<html><head><meta charset=\"utf-8\"></head><body style=\"font-family:sans-serif;max-width:640px;margin:40px auto\">' + '<h2>' + (v.ok ? '✅ ' : '❌ ') + (v.accion || '') + '</h2><p>' + v.mensaje + '</p>' + (datos ? '<pre style=\"background:#f3f4f6;padding:12px;border-radius:8px;white-space:pre-wrap\">' + JSON.stringify(datos, null, 2) + '</pre>' : '') + '<p><a href=\"javascript:history.back()\">Volver al formulario</a></p></body></html>'; })() }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "8c8fc500-e0cc-4053-ab99-998b79477332",
+      "name": "Mostrar resultado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c8586f1c-ff90-4557-948a-3160f47d20ba",
+              "leftValue": "={{ $('Validar formulario').first().json.notificar === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c4c3bce7-f458-4974-a122-792d119c73ce",
+      "name": "¿Evento cancelado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Xd0Zo4L_FXmwnJzqlEQQ0k4RYqYeybbBjBtJ8Zg8a-E"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inscripciones"
+        },
+        "options": {}
+      },
+      "id": "5533790e-ec1b-4b20-ac14-1ccdc0843d5a",
+      "name": "Leer Inscripciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2400,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ev = $('Validar formulario').first().json.row;\nconst ahora = new Date().toISOString();\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst activas = $('Leer Inscripciones').all().map((i) => i.json)\n  .filter((i) => i.evento_id === ev.evento_id && ['CONFIRMADA', 'LISTA_ESPERA'].includes(i.estado));\nreturn activas.map((i) => ({ json: { ...Object.fromEntries(COLS.map((c) => [c, i[c] ?? ''])),\n  estado: 'CANCELADA', fecha_actualizacion: ahora, orden_espera: '', motivo_cancelacion: 'Evento cancelado por el organizador' } }));\n"
+      },
+      "id": "ab627f53-25c1-4b4b-a602-bd845c2ae8f0",
+      "name": "Inscripciones a cancelar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Xd0Zo4L_FXmwnJzqlEQQ0k4RYqYeybbBjBtJ8Zg8a-E"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inscripciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "inscripcion_id"
+          ],
+          "schema": [
+            {
+              "id": "inscripcion_id",
+              "displayName": "inscripcion_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evento_id",
+              "displayName": "evento_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_inscripcion",
+              "displayName": "fecha_inscripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_actualizacion",
+              "displayName": "fecha_actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre_acreditacion",
+              "displayName": "nombre_acreditacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "observaciones",
+              "displayName": "observaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "origen",
+              "displayName": "origen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "orden_espera",
+              "displayName": "orden_espera",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "motivo_cancelacion",
+              "displayName": "motivo_cancelacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "inscripcion_id"
+      },
+      "id": "0c7aad3b-7d2f-4715-94bf-024cbaf619db",
+      "name": "Cancelar inscripciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2880,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ev = $('Validar formulario').first().json.row;\nreturn $('Inscripciones a cancelar').all().map((i) => ({ json: {\n  usuario_id: i.json.usuario_id, tipo: 'EVENTO_CANCELADO', titulo: `Evento cancelado: ${ev.nombre}`,\n  mensaje: `Lamentamos informarte que el evento \"${ev.nombre}\" programado para el ${ev.fecha} a las ${ev.hora} fue CANCELADO por el organizador. Tu inscripción ${i.json.inscripcion_id} quedó cancelada.`,\n  evento_id: ev.evento_id, inscripcion_id: i.json.inscripcion_id,\n  clave_idempotencia: `EVENTO_CANCELADO|${i.json.inscripcion_id}`\n} }));\n"
+      },
+      "id": "444ef004-a918-4e69-b061-95c0f90a0d09",
+      "name": "Datos de notificación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "VYcSZ0DSYDWqPtca"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "eb3c8456-cdcb-4f22-aaa0-b0ad755a80a1",
+      "name": "Notificar (WF09)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3360,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Fila: Crear evento": {
+      "main": [
+        [
+          {
+            "node": "Crear evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Actualizar evento": {
+      "main": [
+        [
+          {
+            "node": "Actualizar evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Auditoría eventos": {
+      "main": [
+        [
+          {
+            "node": "Auditoría eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formulario de administración": {
+      "main": [
+        [
+          {
+            "node": "Leer Eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Eventos": {
+      "main": [
+        [
+          {
+            "node": "Validar formulario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar formulario": {
+      "main": [
+        [
+          {
+            "node": "Según acción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según acción": {
+      "main": [
+        [
+          {
+            "node": "Fila: Crear evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fila: Actualizar evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fila: Auditoría eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear evento": {
+      "main": [
+        [
+          {
+            "node": "Fila: Auditoría eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar evento": {
+      "main": [
+        [
+          {
+            "node": "Fila: Auditoría eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auditoría eventos": {
+      "main": [
+        [
+          {
+            "node": "Mostrar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mostrar resultado": {
+      "main": [
+        [
+          {
+            "node": "¿Evento cancelado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Evento cancelado?": {
+      "main": [
+        [
+          {
+            "node": "Leer Inscripciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Inscripciones": {
+      "main": [
+        [
+          {
+            "node": "Inscripciones a cancelar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inscripciones a cancelar": {
+      "main": [
+        [
+          {
+            "node": "Cancelar inscripciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancelar inscripciones": {
+      "main": [
+        [
+          {
+            "node": "Datos de notificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de notificación": {
+      "main": [
+        [
+          {
+            "node": "Notificar (WF09)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

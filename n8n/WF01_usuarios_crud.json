@@ -1,0 +1,861 @@
+{
+  "name": "WF01 - Usuarios CRUD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ep/usuarios",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "0ff69fc4-8195-4c73-894b-afbcbed23c05",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        180
+      ],
+      "webhookId": "3b25ec86-bd83-673a-2712-f4b4dd012b5e"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "185blWaJfuDvE10v3PiGqwNJ3o89BLo8BkXUf139eAwg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Usuarios"
+        },
+        "options": {}
+      },
+      "id": "9684dcec-1f1e-4df3-b422-2830a4b84f03",
+      "name": "Leer Usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        180
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1G-fKCQAwAqEq6Dt9hFcQijrRdsqnLgg-UOfoJabdemg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sesiones"
+        },
+        "options": {}
+      },
+      "id": "785471de-4cb0-499a-bff6-694bc08caf74",
+      "name": "Leer Sesiones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Vinculaciones"
+        },
+        "options": {}
+      },
+      "id": "8eda163b-c70b-4871-9507-aa35dee5e320",
+      "name": "Leer Vinculaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst emailRx = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst fail = (status, error, usuario_id = '') => [{ json: { ok: false, route: 'responder', action, status, error, usuario_id } }];\nconst siNo = (v, actual) => (v === undefined ? (actual || 'SI') : (v === true || v === 'true' || v === 'SI' ? 'SI' : 'NO'));\n\nif (action === 'create') {\n  const nombre = norm(body.nombre);\n  const email = norm(body.email).toLowerCase();\n  const password = String(body.password ?? '');\n  if (!nombre) return fail(400, 'El nombre es obligatorio.');\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.');\n  if (password.length < 6) return fail(400, 'La contraseña debe tener al menos 6 caracteres.');\n  // Control de email duplicado\n  if (usuarios.some((u) => norm(u.email_normalizado).toLowerCase() === email)) {\n    return fail(409, 'Ya existe una cuenta registrada con ese correo.');\n  }\n  return [{ json: { ok: true, route: 'crear', action, nombre, email, password,\n    telefono: norm(body.telefono), ciudad: norm(body.ciudad), organizacion: norm(body.organizacion) } }];\n}\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return fail(ses.status, ses.error);\nconst u = ses.usuario;\n\nif (action === 'get') return [{ json: { ok: true, route: 'responder', action, usuario: pick(u) } }];\n\nif (action === 'update') {\n  const email = body.email !== undefined ? norm(body.email).toLowerCase() : u.email_normalizado;\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.', u.usuario_id);\n  if (usuarios.some((x) => norm(x.email_normalizado).toLowerCase() === email && x.usuario_id !== u.usuario_id)) {\n    return fail(409, 'Ese correo ya pertenece a otra cuenta.', u.usuario_id);\n  }\n  const campo = (k, actual) => (body[k] !== undefined ? norm(body[k]) : (actual || ''));\n  const row = { ...pick(u),\n    nombre: norm(body.nombre) || u.nombre,\n    email_normalizado: email,\n    telefono: campo('telefono', u.telefono),\n    ciudad: campo('ciudad', u.ciudad),\n    organizacion: campo('organizacion', u.organizacion),\n    notif_email: siNo(body.notificationEmail, u.notif_email),\n    notif_telegram: siNo(body.notificationTelegram, u.notif_telegram),\n    fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nif (action === 'deactivate') {\n  // Borrado lógico: la cuenta pasa a INACTIVO y sus sesiones dejan de ser válidas\n  const row = { ...pick(u), estado: 'INACTIVO', fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nreturn fail(400, 'Acción no soportada. Usa create, get, update o deactivate.');\n"
+      },
+      "id": "8dce1173-9930-4cc7-8e4b-d5a58bb1733e",
+      "name": "Validar solicitud",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "3de13498-7810-4928-8fbe-bdea09851299",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crear",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "crear"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "04fff0e5-ce78-4d78-beb7-0f163439c26b",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "actualizar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "actualizar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "otro"
+        }
+      },
+      "id": "a827788c-b3af-4380-8d7d-cac6b9a1118d",
+      "name": "Enrutar operación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst d = $input.first().json;\nconst ahora = new Date().toISOString();\n// PBKDF2-SHA256 con salt aleatorio de 16 bytes y 100.000 iteraciones\nconst salt = crypto.randomBytes(16).toString('hex');\nconst hash = crypto.pbkdf2Sync(d.password, salt, 100000, 32, 'sha256').toString('hex');\nconst usuario_id = `USR-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;\nreturn [{ json: {\n  usuario_id, nombre: d.nombre, email_normalizado: d.email, password_hash: hash, password_salt: salt,\n  estado: 'ACTIVO', fecha_registro: ahora, fecha_actualizacion: ahora,\n  telefono: d.telefono, ciudad: d.ciudad, organizacion: d.organizacion, notif_email: 'SI', notif_telegram: 'SI'\n} }];\n"
+      },
+      "id": "821df89d-fd09-4f7d-bac3-7529e426f1d9",
+      "name": "Generar hash, salt y usuario_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "185blWaJfuDvE10v3PiGqwNJ3o89BLo8BkXUf139eAwg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Usuarios"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_normalizado",
+              "displayName": "email_normalizado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "password_hash",
+              "displayName": "password_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "password_salt",
+              "displayName": "password_salt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_registro",
+              "displayName": "fecha_registro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_actualizacion",
+              "displayName": "fecha_actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "organizacion",
+              "displayName": "organizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notif_email",
+              "displayName": "notif_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notif_telegram",
+              "displayName": "notif_telegram",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "8373bb14-6b0a-4b21-a1e4-823a9966611c",
+      "name": "Crear usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar solicitud').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "27acc352-6ced-4fc1-81b0-b0c0792f9961",
+      "name": "Fila: Actualizar usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "185blWaJfuDvE10v3PiGqwNJ3o89BLo8BkXUf139eAwg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Usuarios"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "usuario_id"
+          ],
+          "schema": [
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_normalizado",
+              "displayName": "email_normalizado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "password_hash",
+              "displayName": "password_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "password_salt",
+              "displayName": "password_salt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_registro",
+              "displayName": "fecha_registro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_actualizacion",
+              "displayName": "fecha_actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ciudad",
+              "displayName": "ciudad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "organizacion",
+              "displayName": "organizacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notif_email",
+              "displayName": "notif_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notif_telegram",
+              "displayName": "notif_telegram",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "usuario_id"
+      },
+      "id": "bfa08e56-9a48-48a0-8d17-5a3ac472ac83",
+      "name": "Actualizar usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Perfil público (sin hash ni salt) en el formato que espera el frontend.\nfunction perfil(u, vinculaciones) {\n  const v = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  return {\n    usuario_id: u.usuario_id, name: u.nombre, email: u.email_normalizado, phone: u.telefono || '',\n    city: u.ciudad || '', organization: u.organizacion || '', estado: u.estado,\n    telegramLinked: Boolean(v), telegramUsername: v ? v.telegram_username : undefined,\n    notificationEmail: u.notif_email !== 'NO', notificationTelegram: u.notif_telegram !== 'NO'\n  };\n}\n\nconst v = $('Validar solicitud').first().json;\nconst vinculaciones = rows('Leer Vinculaciones', 'usuario_id');\nconst mensajes = { create: 'Cuenta creada correctamente.', get: 'Perfil consultado.',\n  update: 'Perfil actualizado correctamente.', deactivate: 'La cuenta fue desactivada.' };\nlet status, body, usuario_id = v.usuario_id || '', resultado, detalle;\nif (!v.ok) {\n  status = v.status; body = { success: false, error: v.error }; resultado = 'ERROR'; detalle = v.error;\n} else {\n  const u = v.route === 'crear' ? $('Generar hash, salt y usuario_id').first().json\n    : v.route === 'actualizar' ? v.row : v.usuario;\n  status = v.route === 'crear' ? 201 : 200;\n  body = { success: true, data: perfil(u, vinculaciones), message: mensajes[v.action] };\n  usuario_id = u.usuario_id; resultado = 'OK'; detalle = mensajes[v.action];\n}\nconst audit = { auditoria_id: genId('AUD'), usuario_id, accion: (v.action || 'desconocida').toUpperCase(),\n  fecha: ahora, resultado, detalle };\nreturn [{ json: { status, body, audit } }];\n"
+      },
+      "id": "ebe328ce-cc71-488e-85f0-aeae900da92b",
+      "name": "Construir respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"auditoria_id\",\"usuario_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Construir respuesta').first().json.audit;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "34d72921-8c69-496a-b79b-db5fc8faf4eb",
+      "name": "Fila: Auditoría usuarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "185blWaJfuDvE10v3PiGqwNJ3o89BLo8BkXUf139eAwg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Auditoria_Usuarios"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "auditoria_id",
+              "displayName": "auditoria_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "accion",
+              "displayName": "accion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalle",
+              "displayName": "detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "0304fcd3-1ec1-4567-8aa2-140312685946",
+      "name": "Auditoría usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2400,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Construir respuesta').first().json.body) }}",
+        "options": {
+          "responseCode": "={{ $('Construir respuesta').first().json.status }}"
+        }
+      },
+      "id": "bdbec9b6-4dd9-4b9e-956e-967ea2d6c94e",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Fila: Actualizar usuario": {
+      "main": [
+        [
+          {
+            "node": "Actualizar usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Auditoría usuarios": {
+      "main": [
+        [
+          {
+            "node": "Auditoría usuarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Leer Usuarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Usuarios": {
+      "main": [
+        [
+          {
+            "node": "Leer Sesiones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Sesiones": {
+      "main": [
+        [
+          {
+            "node": "Leer Vinculaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Vinculaciones": {
+      "main": [
+        [
+          {
+            "node": "Validar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Enrutar operación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrutar operación": {
+      "main": [
+        [
+          {
+            "node": "Generar hash, salt y usuario_id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fila: Actualizar usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Construir respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar hash, salt y usuario_id": {
+      "main": [
+        [
+          {
+            "node": "Crear usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear usuario": {
+      "main": [
+        [
+          {
+            "node": "Construir respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar usuario": {
+      "main": [
+        [
+          {
+            "node": "Construir respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir respuesta": {
+      "main": [
+        [
+          {
+            "node": "Fila: Auditoría usuarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auditoría usuarios": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

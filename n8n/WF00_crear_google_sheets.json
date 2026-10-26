@@ -1,0 +1,185 @@
+{
+  "name": "WF00 - Crear Google Sheets de EventPass",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ep/setup-hojas",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "d2fe462b-7cc8-4491-8a87-0481cb3bb375",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        180
+      ],
+      "webhookId": "49c58b1a-da9b-beba-d161-33b7624e0744"
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = {\"Usuarios\":[\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"],\"Auditoria_Usuarios\":[\"auditoria_id\",\"usuario_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"],\"Sesiones\":[\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"],\"Codigos_Vinculacion\":[\"codigo_id\",\"usuario_id\",\"codigo\",\"creado_en\",\"expira_en\",\"estado\",\"usado_en\"],\"Vinculaciones\":[\"vinculacion_id\",\"usuario_id\",\"chat_id\",\"telegram_username\",\"fecha_vinculacion\",\"estado\"],\"Eventos\":[\"evento_id\",\"nombre\",\"categoria\",\"descripcion\",\"fecha\",\"hora\",\"lugar\",\"capacidad\",\"imagen_url\",\"organizador\",\"estado\",\"fecha_creacion\",\"fecha_actualizacion\"],\"Auditoria_Eventos\":[\"auditoria_id\",\"evento_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"],\"Consultas_Catalogo\":[\"consulta_id\",\"fecha\",\"tipo\",\"evento_id\",\"categoria\",\"resultado_count\",\"visitor_id\",\"status_http\"],\"Inscripciones\":[\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"],\"Auditoria_Inscripciones\":[\"auditoria_id\",\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"accion\",\"estado_anterior\",\"estado_nuevo\",\"fecha\",\"resultado\",\"detalle\"],\"Reasignaciones\":[\"reasignacion_id\",\"evento_id\",\"inscripcion_id\",\"usuario_id\",\"fecha\",\"orden_lista\",\"estado_anterior\",\"estado_nuevo\",\"resultado_notificacion\"],\"Recordatorios\":[\"recordatorio_id\",\"usuario_id\",\"evento_id\",\"inscripcion_id\",\"tipo_recordatorio\",\"fecha_programada\",\"fecha_envio\",\"estado\",\"clave_idempotencia\"],\"Notificaciones\":[\"notificacion_id\",\"usuario_id\",\"tipo\",\"titulo\",\"mensaje\",\"evento_id\",\"inscripcion_id\",\"fecha\",\"gmail_estado\",\"telegram_estado\",\"gmail_error\",\"telegram_error\",\"clave_idempotencia\"],\"Conversaciones\":[\"conversation_id\",\"usuario_id\",\"visitor_id\",\"fecha_inicio\",\"fecha_ultima_interaccion\",\"estado\"],\"Mensajes\":[\"message_id\",\"conversation_id\",\"usuario_id\",\"visitor_id\",\"rol\",\"mensaje\",\"timestamp\"]};\nconst ARCHIVOS = {\n  EP01_Usuarios: ['Usuarios', 'Auditoria_Usuarios'],\n  EP02_Sesiones: ['Sesiones'],\n  EP03_Telegram: ['Codigos_Vinculacion', 'Vinculaciones'],\n  EP04_Eventos: ['Eventos', 'Auditoria_Eventos'],\n  EP05_Catalogo_Log: ['Consultas_Catalogo'],\n  EP06_Inscripciones: ['Inscripciones', 'Auditoria_Inscripciones'],\n  EP07_Reasignaciones: ['Reasignaciones'],\n  EP08_Recordatorios: ['Recordatorios'],\n  EP09_Notificaciones: ['Notificaciones'],\n  EP10_Soporte: ['Conversaciones', 'Mensajes']\n};\nconst ahora = new Date().toISOString();\nconst enDias = (n) => DateTime.now().setZone('America/Bogota').plus({ days: n }).toFormat('yyyy-MM-dd');\nconst evento = (id, nombre, categoria, descripcion, dias, hora, lugar, capacidad, imagen, organizador, estado) => ({\n  evento_id: id, nombre, categoria, descripcion, fecha: enDias(dias), hora, lugar, capacidad: String(capacidad),\n  imagen_url: imagen, organizador, estado, fecha_creacion: ahora, fecha_actualizacion: ahora });\n\n// 7 eventos en 4 categorías: con cupos, lleno, próximo (2 días), cancelado, cerrado y un borrador oculto\nconst datos = {\n  Eventos: [\n    evento('EVT-TECH-01', 'Cumbre Global de Inteligencia Artificial & Cloud', 'Tecnología',\n      'Conferencias magistrales sobre agentes autónomos, LLMs y arquitectura cloud serverless, con paneles y networking.',\n      20, '09:00', 'Auditorio NovaTech Center, Bogotá', 350, '/images/event_tech_summit_1792500747939.jpg',\n      'Alianza Iberoamericana de Innovación', 'PUBLICADO'),\n    evento('EVT-CULT-02', 'Festival Iberoamericano de Jazz & Artes Sonoras', 'Cultura',\n      'Encuentro musical al aire libre con orquestas contemporáneas y ensambles acústicos. Aforo reducido: está LLENO.',\n      10, '19:00', 'Teatro Abierto Bellas Vistas, Medellín', 3, '/images/event_culture_jazz_1792500747803.jpg',\n      'Colectivo Cultural Acústico', 'PUBLICADO'),\n    evento('EVT-EDU-03', 'Masterclass de Diseño de Producto & UX Systems', 'Educación',\n      'Taller sobre design tokens, microinteracciones accesibles y diseño centrado en el usuario. ¡Es en 2 días!',\n      2, '10:00', 'Campus Creativo Loft 04, Bucaramanga', 80, '/images/event_education_design_1792500748396.jpg',\n      'Design Academy Latam', 'PUBLICADO'),\n    evento('EVT-DEP-04', 'Maratón Nocturna Metropolitana 10K & 21K', 'Deportes',\n      'Carrera atlética urbana. Edición suspendida por obras de infraestructura vial en el circuito.',\n      15, '20:00', 'Circuito Costanera Central, Cali', 1200, '/images/event_sports_marathon_1792500748476.jpg',\n      'Federación Atlética Urbana', 'CANCELADO'),\n    evento('EVT-TECH-05', 'DevOps & Kubernetes World Tour Latam', 'Tecnología',\n      'Observabilidad, pipelines GitOps y despliegues multi-cluster con alta disponibilidad.',\n      25, '09:30', 'Centro de Convenciones Prisma, Bogotá', 180, '/images/hero_eventpass_conference_1792500747135.jpg',\n      'Cloud Native Community Latam', 'CERRADO'),\n    evento('EVT-EDU-06', 'Bootcamp Práctico: Automatizaciones con n8n & No-Code', 'Educación',\n      'Conecta formularios web con Google Sheets, webhooks y bots de Telegram en tiempo real.',\n      30, '15:00', 'Laboratorio Tech Hub, Bucaramanga', 120, '/images/event_education_design_1792500748396.jpg',\n      'Workflow Masters Hub', 'PUBLICADO'),\n    evento('EVT-DEP-07', 'Torneo Relámpago de Fútbol 5 Comunitario', 'Deportes',\n      'Evento en preparación (BORRADOR): no debe aparecer en el catálogo público.',\n      40, '08:00', 'Polideportivo Norte, Bucaramanga', 64, '/images/event_sports_marathon_1792500748476.jpg',\n      'Liga Barrial', 'BORRADOR')\n  ],\n  // Usuarios de prueba (sin contraseña válida) que ocupan los 3 cupos del festival de jazz\n  Usuarios: [1, 2, 3].map((n) => ({ usuario_id: `USR-DEMO-0${n}`, nombre: `Asistente Demo ${n}`,\n    email_normalizado: `demo${n}@eventpass.test`, password_hash: 'SEMILLA', password_salt: 'SEMILLA', estado: 'ACTIVO',\n    fecha_registro: ahora, fecha_actualizacion: ahora, notif_email: 'SI', notif_telegram: 'SI' })),\n  Inscripciones: [1, 2, 3].map((n) => ({ inscripcion_id: `INS-DEMO-0${n}`, usuario_id: `USR-DEMO-0${n}`,\n    evento_id: 'EVT-CULT-02', estado: 'CONFIRMADA', fecha_inscripcion: ahora, fecha_actualizacion: ahora,\n    nombre_acreditacion: `Asistente Demo ${n}`, observaciones: 'Dato de prueba', origen: 'SEMILLA' }))\n};\n\nreturn Object.entries(ARCHIVOS).map(([archivo, hojas]) => ({ json: {\n  archivo,\n  hojas: hojas.map((h) => ({\n    titulo: h,\n    filas: [COLS[h], ...(datos[h] || []).map((r) => COLS[h].map((c) => r[c] ?? ''))]\n  }))\n} }));\n"
+      },
+      "id": "edce73c9-d256-4cf2-ba3b-61e803e665b4",
+      "name": "Definir hojas y datos de prueba",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: { title: $json.archivo, locale: \"es_CO\", timeZone: \"America/Bogota\" }, sheets: $json.hojas.map((h) => ({ properties: { title: h.titulo, gridProperties: { frozenRowCount: 1 } } })) }) }}",
+        "options": {}
+      },
+      "id": "29e9532b-7a55-46ef-8879-44e0d43e2822",
+      "name": "Crear archivo de Google Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        180
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.spreadsheetId }}/values:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ valueInputOption: 'RAW', data: $('Definir hojas y datos de prueba').item.json.hojas.map((h) => ({ range: \"'\" + h.titulo + \"'!A1\", values: h.filas })) }) }}",
+        "options": {}
+      },
+      "id": "d4f15f96-6ce9-426e-b862-90530dd762bb",
+      "name": "Escribir columnas y datos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        180
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ids = {};\n$('Crear archivo de Google Sheets').all().forEach((it) => {\n  ids[it.json.properties.title] = it.json.spreadsheetId;\n});\nreturn [{ json: { status: 200, body: { success: true, data: ids } } }];\n"
+      },
+      "id": "8c713217-0a1c-47f5-bd47-3366c7838068",
+      "name": "IDs para config.json",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('IDs para config.json').first().json.body) }}",
+        "options": {
+          "responseCode": "={{ $('IDs para config.json').first().json.status }}"
+        }
+      },
+      "id": "5f23ccab-8260-4d82-998a-03ff08063913",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Definir hojas y datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Definir hojas y datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Crear archivo de Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear archivo de Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Escribir columnas y datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escribir columnas y datos": {
+      "main": [
+        [
+          {
+            "node": "IDs para config.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IDs para config.json": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

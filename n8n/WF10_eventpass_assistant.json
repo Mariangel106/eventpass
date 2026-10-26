@@ -1,0 +1,739 @@
+{
+  "name": "WF10 - EventPass Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "allowedOrigins": "*",
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "36c5dede-cda4-423f-8e54-3726b26fc6d4",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        180
+      ],
+      "webhookId": "2715f76e-c609-5fad-3b13-2c00bdaf3be2"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1u-nvxd9AU-8gOrG1L-RkkGm_SnV1rPLaWbE8gVmHgNM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Eventos"
+        },
+        "options": {}
+      },
+      "id": "fc9e26a6-795d-4b21-b15e-108d6f2b6561",
+      "name": "Leer Eventos (solo lectura)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Xd0Zo4L_FXmwnJzqlEQQ0k4RYqYeybbBjBtJ8Zg8a-E"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inscripciones"
+        },
+        "options": {}
+      },
+      "id": "2ac10581-5c7e-414e-a7f8-b0b0ce632123",
+      "name": "Leer Inscripciones (solo lectura)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1IACCWfBJBxihbcsGBOzdnLrNTaPm_vXoA1oyU55gwso"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Conversaciones"
+        },
+        "options": {}
+      },
+      "id": "0fc58aa3-ab57-44d4-bff0-c1ec43173c09",
+      "name": "Leer Conversaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1IACCWfBJBxihbcsGBOzdnLrNTaPm_vXoA1oyU55gwso"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Mensajes"
+        },
+        "options": {}
+      },
+      "id": "c2c44e8d-1d07-4c1b-9768-91f1df0c9146",
+      "name": "Leer Mensajes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Cupos = capacidad - inscripciones CONFIRMADAS (nunca un valor manual)\nfunction conteos(inscripciones) {\n  const c = {}, w = {};\n  for (const i of inscripciones) {\n    if (i.estado === 'CONFIRMADA') c[i.evento_id] = (c[i.evento_id] || 0) + 1;\n    if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;\n  }\n  return { confirmadas: c, espera: w };\n}\nfunction eventoFront(e, cnt) {\n  const capacidad = Number(e.capacidad) || 0;\n  const confirmadas = cnt.confirmadas[e.evento_id] || 0;\n  const libres = Math.max(0, capacidad - confirmadas);\n  const inicio = inicioEvento(e);\n  const dias = inicio.isValid ? Math.ceil(inicio.diff(DateTime.now(), 'days').days) : null;\n  const finalizado = inicio.isValid && inicio < DateTime.now();\n  let status;\n  if (e.estado === 'CANCELADO') status = 'CANCELADO';\n  else if (e.estado === 'CERRADO' || finalizado) status = 'CERRADO';\n  else if (libres === 0) status = 'AGOTADO';\n  else if (dias !== null && dias <= 7) status = 'PROXIMO';\n  else status = 'DISPONIBLE';\n  const desc = norm(e.descripcion);\n  return {\n    id: e.evento_id, slug: e.evento_id, title: e.nombre, category: e.categoria,\n    shortDescription: desc.length > 150 ? desc.slice(0, 147) + '...' : desc, description: desc,\n    date: fechaLegible(e), isoDate: norm(e.fecha), time: norm(e.hora), location: e.lugar, venueType: 'Presencial',\n    organizer: e.organizador, totalCapacity: capacidad, registeredCount: confirmadas, availableSpots: libres,\n    waitlistCount: cnt.espera[e.evento_id] || 0, daysUntil: dias, status,\n    cancellationReason: e.estado === 'CANCELADO' ? 'Evento cancelado por el organizador.'\n      : status === 'CERRADO' ? 'Inscripciones cerradas.' : undefined,\n    imageUrl: e.imagen_url, tags: [e.categoria], priceText: 'Entrada gratuita con inscripción previa'\n  };\n}\n\nconst c = $('Chat Trigger').first().json;\n    const meta = c.metadata || {};\n    const pregunta = norm(c.chatInput);\n    const sessionId = norm(c.sessionId) || genId('SESS');\n    // conversation_id derivado del sessionId del chat: misma ventana de chat = misma conversación\n    const conversation_id = `CONV-${sessionId}`;\n    const usuario_id = norm(meta.usuario_id);\n    const visitor_id = norm(meta.visitor_id) || sessionId;\n    const previa = rows('Leer Conversaciones', 'conversation_id').find((x) => x.conversation_id === conversation_id);\n    const historial = rows('Leer Mensajes', 'message_id').filter((m) => m.conversation_id === conversation_id)\n      .sort((a, b) => norm(a.timestamp).localeCompare(norm(b.timestamp))).slice(-10)\n      .map((m) => `${m.rol === 'USER' ? 'Usuario' : 'Asistente'}: ${m.mensaje}`).join('\\n');\n    const cnt = conteos(rows('Leer Inscripciones (solo lectura)', 'inscripcion_id'));\n    const catalogo = rows('Leer Eventos (solo lectura)', 'evento_id').filter((e) => e.estado !== 'BORRADOR')\n      .map((e) => eventoFront(e, cnt))\n      .map((e) => `- ${e.title} | Categoría: ${e.category} | Fecha: ${e.date} ${e.time} | Lugar: ${e.location} | Estado: ${e.status} | Cupos libres: ${e.availableSpots}/${e.totalCapacity} | En espera: ${e.waitlistCount}`)\n      .join('\\n');\n\n    const prompt = `Eres \"EventPass Assistant\", el asistente de soporte de la plataforma EventPass.\nResponde SIEMPRE en español, de forma breve, amable y precisa.\nEscribe en texto plano: sin Markdown, sin asteriscos ni almohadillas. Para listas usa guiones simples.\n\nREGLAS ESTRICTAS (eres solo informativo):\n- NO puedes crear usuarios, iniciar sesión, inscribir, cancelar inscripciones, modificar eventos, cambiar cupos ni cambiar estados.\n- Si te piden alguna de esas acciones, explica cómo hacerla el propio usuario desde la web de EventPass.\n- Usa SOLO la información del catálogo de abajo. Si algo no aparece, di que no tienes ese dato. No inventes eventos, fechas ni cupos.\n- Nunca reveles datos personales de otros usuarios.\n\nCÓMO FUNCIONA EVENTPASS:\n- Estados de evento: DISPONIBLE (hay cupos), PROXIMO (se realiza en menos de 7 días), AGOTADO (sin cupos, se entra a lista de espera), CERRADO (inscripciones cerradas o evento finalizado), CANCELADO.\n- Estados de inscripción: CONFIRMADA (cupo garantizado), LISTA_ESPERA (sin cupo, en cola), CANCELADA.\n- Lista de espera: si un inscrito confirmado cancela, el sistema revisa cada 5 minutos y promueve automáticamente al que lleva más tiempo esperando (orden por fecha de inscripción). Se notifica por correo y Telegram.\n- Para inscribirse hay que tener cuenta, sesión iniciada y Telegram vinculado.\n- Vincular Telegram: en la web ir a Perfil → Vincular Telegram, generar un código y enviar al bot @Evenpass_bot_bot el mensaje: /vincular CODIGO. El código dura 15 minutos y solo sirve una vez.\n- Cancelar: en \"Mis Inscripciones\" → \"Cancelar inscripción\".\n- Recordatorios: se envían 72 h y 24 h antes del evento por correo y Telegram.\n\nCATÁLOGO ACTUAL:\n${catalogo || '(sin eventos publicados)'}\n\nHISTORIAL RECIENTE DE ESTA CONVERSACIÓN:\n${historial || '(inicio de la conversación)'}\n\nPREGUNTA DEL USUARIO:\n${pregunta}`;\n\n    return [{ json: { conversation_id, usuario_id, visitor_id, pregunta, prompt,\n      fecha_inicio: previa ? previa.fecha_inicio : ahora } }];\n"
+      },
+      "id": "e5df3496-5f1a-49d1-877c-5e8bce39cabc",
+      "name": "Preparar contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"conversation_id\",\"usuario_id\",\"visitor_id\",\"fecha_inicio\",\"fecha_ultima_interaccion\",\"estado\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const p = $('Preparar contexto').first().json;\n  return { conversation_id: p.conversation_id, usuario_id: p.usuario_id, visitor_id: p.visitor_id,\n    fecha_inicio: p.fecha_inicio, fecha_ultima_interaccion: new Date().toISOString(), estado: 'ABIERTA' };\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "9b6919dd-eaec-403b-a8b9-dbd3a386aed8",
+      "name": "Fila: Guardar conversación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1IACCWfBJBxihbcsGBOzdnLrNTaPm_vXoA1oyU55gwso"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Conversaciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "conversation_id"
+          ],
+          "schema": [
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visitor_id",
+              "displayName": "visitor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_inicio",
+              "displayName": "fecha_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_ultima_interaccion",
+              "displayName": "fecha_ultima_interaccion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "conversation_id"
+      },
+      "id": "e88ea313-90a2-4ee5-8c2e-ecd5f4895e25",
+      "name": "Guardar conversación",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"message_id\",\"conversation_id\",\"usuario_id\",\"visitor_id\",\"rol\",\"mensaje\",\"timestamp\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const p = $('Preparar contexto').first().json;\n  return { message_id: `MSG-${Date.now().toString(36).toUpperCase()}U`, conversation_id: p.conversation_id,\n    usuario_id: p.usuario_id, visitor_id: p.visitor_id, rol: 'USER', mensaje: p.pregunta, timestamp: new Date().toISOString() };\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "54506319-f2d3-43bd-b554-8e43732c0efa",
+      "name": "Fila: Guardar mensaje usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1IACCWfBJBxihbcsGBOzdnLrNTaPm_vXoA1oyU55gwso"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Mensajes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visitor_id",
+              "displayName": "visitor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "12174478-b323-4312-a8cd-1022004d032a",
+      "name": "Guardar mensaje usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2160,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Preparar contexto').first().json.prompt }}"
+      },
+      "id": "138536e7-88e8-45a6-ada3-d3dde2e856bb",
+      "name": "EventPass Assistant (IA)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2400,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "f02607f0-3869-461c-900e-7e923793fcf6",
+      "name": "Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        360
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "FNBM58USzxqWa9D6",
+          "name": "Gemini EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"message_id\",\"conversation_id\",\"usuario_id\",\"visitor_id\",\"rol\",\"mensaje\",\"timestamp\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const p = $('Preparar contexto').first().json;\n  const texto = $('EventPass Assistant (IA)').first().json.text || 'Lo siento, no pude generar una respuesta.';\n  return { message_id: `MSG-${Date.now().toString(36).toUpperCase()}A`, conversation_id: p.conversation_id,\n    usuario_id: p.usuario_id, visitor_id: p.visitor_id, rol: 'ASSISTANT', mensaje: texto, timestamp: new Date().toISOString() };\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "29a64544-5c5c-46a8-92dc-baebe5f3cdd6",
+      "name": "Fila: Guardar mensaje asistente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1IACCWfBJBxihbcsGBOzdnLrNTaPm_vXoA1oyU55gwso"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Mensajes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visitor_id",
+              "displayName": "visitor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "c79d7200-d7a6-4626-a50b-9033e031d725",
+      "name": "Guardar mensaje asistente",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2880,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Preparar contexto').first().json;\nconst texto = $('EventPass Assistant (IA)').first().json.text || 'Lo siento, no pude generar una respuesta.';\nreturn [{ json: { output: texto, conversation_id: p.conversation_id } }];\n"
+      },
+      "id": "bbf5864c-987f-4eda-9809-2cfb3d6e1b95",
+      "name": "Respuesta al chat",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Fila: Guardar conversación": {
+      "main": [
+        [
+          {
+            "node": "Guardar conversación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Guardar mensaje usuario": {
+      "main": [
+        [
+          {
+            "node": "Guardar mensaje usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Guardar mensaje asistente": {
+      "main": [
+        [
+          {
+            "node": "Guardar mensaje asistente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Leer Eventos (solo lectura)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Eventos (solo lectura)": {
+      "main": [
+        [
+          {
+            "node": "Leer Inscripciones (solo lectura)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Inscripciones (solo lectura)": {
+      "main": [
+        [
+          {
+            "node": "Leer Conversaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Conversaciones": {
+      "main": [
+        [
+          {
+            "node": "Leer Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Preparar contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar contexto": {
+      "main": [
+        [
+          {
+            "node": "Fila: Guardar conversación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar conversación": {
+      "main": [
+        [
+          {
+            "node": "Fila: Guardar mensaje usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar mensaje usuario": {
+      "main": [
+        [
+          {
+            "node": "EventPass Assistant (IA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EventPass Assistant (IA)": {
+      "main": [
+        [
+          {
+            "node": "Fila: Guardar mensaje asistente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "EventPass Assistant (IA)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar mensaje asistente": {
+      "main": [
+        [
+          {
+            "node": "Respuesta al chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "timezone": "America/Bogota",
+  "telegram_bot_username": "EventPassNotificaBot",
+  "gemini_model": "models/gemini-3.5-flash",
+  "session_hours": 8,
+  "telegram_code_minutes": 15,
+  "imagen_por_defecto": "/images/hero_eventpass_conference_1792500747135.jpg",
+
+  "sheets": {
+    "EP01_Usuarios": "",
+    "EP02_Sesiones": "",
+    "EP03_Telegram": "",
+    "EP04_Eventos": "",
+    "EP05_Catalogo_Log": "",
+    "EP06_Inscripciones": "",
+    "EP07_Reasignaciones": "",
+    "EP08_Recordatorios": "",
+    "EP09_Notificaciones": "",
+    "EP10_Soporte": ""
+  },
+
+  "credentials": {
+    "googleSheets": { "id": "", "name": "Google Sheets account" },
+    "gmail": { "id": "", "name": "Gmail account" },
+    "telegram": { "id": "", "name": "Telegram account" },
+    "gemini": { "id": "", "name": "Google Gemini(PaLM) Api account" },
+    "formBasicAuth": { "id": "", "name": "EventPass Admin" }
+  },
+
+  "wf09_id": ""
+}

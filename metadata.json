@@ -1,0 +1,6 @@
+{
+  "name": "EventPass",
+  "description": "Plataforma moderna para descubrir eventos e inscribirse en ellos, con integración lista para n8n, Google Sheets y notificaciones por Telegram.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

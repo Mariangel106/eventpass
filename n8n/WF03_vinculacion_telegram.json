@@ -1,0 +1,1343 @@
+{
+  "name": "WF03 - Vinculación con Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ep/telegram",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7be51a62-39e5-4835-aaa5-01266066572c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        180
+      ],
+      "webhookId": "f193b502-590b-fb14-7d0e-2c14b8b21d58"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1G-fKCQAwAqEq6Dt9hFcQijrRdsqnLgg-UOfoJabdemg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sesiones"
+        },
+        "options": {}
+      },
+      "id": "cdea30ae-c09c-4570-a058-c1043c41ce8f",
+      "name": "Leer Sesiones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        180
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "185blWaJfuDvE10v3PiGqwNJ3o89BLo8BkXUf139eAwg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Usuarios"
+        },
+        "options": {}
+      },
+      "id": "e24819a0-c8ac-4d55-9618-5d25793032e1",
+      "name": "Leer Usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Codigos_Vinculacion"
+        },
+        "options": {}
+      },
+      "id": "3ad23077-f47f-4f81-ac33-d2ae444fea9d",
+      "name": "Leer Códigos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Vinculaciones"
+        },
+        "options": {}
+      },
+      "id": "62ef5f8b-c46d-48f3-b8dc-a25948607d74",
+      "name": "Leer Vinculaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        180
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst crypto = require('crypto');\nconst BOT = 'Evenpass_bot_bot';\nconst MINUTOS = 15;\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst codigos = rows('Leer Códigos', 'codigo_id');\nconst vinculaciones = rows('Leer Vinculaciones', 'vinculacion_id');\nconst VCOLS = [\"vinculacion_id\",\"usuario_id\",\"chat_id\",\"telegram_username\",\"fecha_vinculacion\",\"estado\"];\nconst out = (route, status, payload, row) => [{ json: { route, status, body: payload, row } }];\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return out('responder', ses.status, { success: false, error: ses.error });\nconst u = ses.usuario;\nconst vinc = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n\nif (action === 'status') {\n  return out('responder', 200, { success: true, data: { linked: Boolean(vinc),\n    telegramUsername: vinc ? vinc.telegram_username : null, botUser: BOT } });\n}\n\nif (action === 'code') {\n  if (vinc) return out('responder', 409, { success: false, error: 'Tu cuenta ya tiene Telegram vinculado.' });\n  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\n  const usados = new Set(codigos.map((c) => norm(c.codigo).toUpperCase()));\n  let codigo;\n  do {\n    codigo = Array.from({ length: 6 }, () => alfabeto[crypto.randomInt(alfabeto.length)]).join('');\n  } while (usados.has(codigo));\n  const expira = new Date(Date.now() + MINUTOS * 60 * 1000).toISOString();\n  const row = { codigo_id: genId('COD'), usuario_id: u.usuario_id, codigo, creado_en: ahora,\n    expira_en: expira, estado: 'PENDIENTE', usado_en: '' };\n  return out('generar', 201, { success: true, data: { code: codigo, botUser: BOT, expiresAt: expira },\n    message: `Envía /vincular ${codigo} al bot @${BOT}. Vence en ${MINUTOS} minutos.` }, row);\n}\n\nif (action === 'unlink') {\n  if (!vinc) return out('responder', 404, { success: false, error: 'No tienes una vinculación activa.' });\n  const row = { ...Object.fromEntries(VCOLS.map((c) => [c, vinc[c] ?? ''])), estado: 'INACTIVA' };\n  return out('desvincular', 200, { success: true, message: 'Telegram desvinculado.' }, row);\n}\n\nreturn out('responder', 400, { success: false, error: 'Acción no soportada. Usa code, status o unlink.' });\n"
+      },
+      "id": "ba61b570-75b1-452c-949e-c375fc1cde45",
+      "name": "Validar sesión y generar código",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "9b2c6b1f-2edf-4fe8-85c5-b75618b744e7",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "generar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "generar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "067d2bd3-c5c9-48bc-85e8-0d926e5a77e1",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "desvincular",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "desvincular"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "otro"
+        }
+      },
+      "id": "8380f10b-628a-4cbb-8cde-10bb30f17585",
+      "name": "Enrutar solicitud",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"codigo_id\",\"usuario_id\",\"codigo\",\"creado_en\",\"expira_en\",\"estado\",\"usado_en\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar sesión y generar código').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "5aa13443-eed0-4628-9f7f-b8f7c144c428",
+      "name": "Fila: Guardar código",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Codigos_Vinculacion"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "codigo_id",
+              "displayName": "codigo_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creado_en",
+              "displayName": "creado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expira_en",
+              "displayName": "expira_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usado_en",
+              "displayName": "usado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "2953d36a-8e4a-49dd-8ec4-c155785663c7",
+      "name": "Guardar código",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"vinculacion_id\",\"usuario_id\",\"chat_id\",\"telegram_username\",\"fecha_vinculacion\",\"estado\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar sesión y generar código').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "d07cdc9a-e6ac-40fa-ba90-ac38349147d9",
+      "name": "Fila: Desactivar vinculación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Vinculaciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "vinculacion_id"
+          ],
+          "schema": [
+            {
+              "id": "vinculacion_id",
+              "displayName": "vinculacion_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telegram_username",
+              "displayName": "telegram_username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_vinculacion",
+              "displayName": "fecha_vinculacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "vinculacion_id"
+      },
+      "id": "a94c7c8f-6741-4778-b39c-3187488d1ffa",
+      "name": "Desactivar vinculación",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Validar sesión y generar código').first().json.body) }}",
+        "options": {
+          "responseCode": "={{ $('Validar sesión y generar código').first().json.status }}"
+        }
+      },
+      "id": "e76f9efd-ce76-4336-8bf9-6612472fec3a",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0942142f-49da-4690-b373-f98dc998def7",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        720
+      ],
+      "webhookId": "0eb08cd4-c71b-c22e-9782-ee9570f188fc",
+      "credentials": {
+        "telegramApi": {
+          "id": "72jKS0Ajfwy8aYW7",
+          "name": "Telegram EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $input.first().json.message || {};\nconst texto = String(m.text || '').trim();\nconst match = texto.match(/^\\/vincular(?:@\\w+)?\\s+([A-Za-z0-9-]+)/i);\nreturn [{ json: {\n  chat_id: String(m.chat?.id ?? ''),\n  username: m.from?.username || m.from?.first_name || '',\n  texto,\n  codigo: match ? match[1].toUpperCase() : ''\n} }];\n"
+      },
+      "id": "a7d52ea5-b50a-4940-8cae-3f05a1e71668",
+      "name": "Extraer código",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Codigos_Vinculacion"
+        },
+        "options": {}
+      },
+      "id": "6d0ce426-83f6-4a5e-a46e-f01f5df64f01",
+      "name": "Leer Códigos (bot)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        720
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Vinculaciones"
+        },
+        "options": {}
+      },
+      "id": "25828acb-e57b-47a9-bf2d-94cb145598f5",
+      "name": "Leer Vinculaciones (bot)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        720
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst d = $('Extraer código').first().json;\nconst codigos = rows('Leer Códigos (bot)', 'codigo_id');\nconst vinculaciones = rows('Leer Vinculaciones (bot)', 'vinculacion_id');\nconst CCOLS = [\"codigo_id\",\"usuario_id\",\"codigo\",\"creado_en\",\"expira_en\",\"estado\",\"usado_en\"];\nconst pickC = (o) => Object.fromEntries(CCOLS.map((c) => [c, o?.[c] ?? '']));\nconst r = (route, reply, extra = {}) => [{ json: { route, reply, ...extra } }];\n\nif (!d.codigo) {\n  return r('responder', d.texto.toLowerCase().startsWith('/vincular')\n    ? 'Formato incorrecto. Envía: /vincular CODIGO'\n    : '👋 Hola, soy el bot de EventPass. Genera tu código en la web (Perfil → Telegram) y envíame: /vincular CODIGO');\n}\nconst c = codigos.find((x) => norm(x.codigo).toUpperCase() === d.codigo);\nif (!c) return r('responder', '❌ Ese código no existe. Genera uno nuevo en EventPass.');\nif (c.estado === 'USADO') return r('responder', '⚠️ Este código ya fue utilizado. Cada código sirve una sola vez.');\nif (c.estado !== 'PENDIENTE') return r('responder', `⚠️ Este código ya no es válido (${c.estado}). Genera uno nuevo.`);\nif (new Date(c.expira_en) < new Date()) {\n  return r('expirar', '⌛ El código expiró. Genera uno nuevo en EventPass.', { codigoRow: { ...pickC(c), estado: 'EXPIRADO' } });\n}\nconst previa = vinculaciones.find((x) => x.usuario_id === c.usuario_id);\nreturn r('vincular', '✅ ¡Cuenta vinculada! Aquí recibirás confirmaciones, avisos de lista de espera y recordatorios de EventPass.', {\n  codigoRow: { ...pickC(c), estado: 'USADO', usado_en: ahora },\n  vincRow: { vinculacion_id: previa?.vinculacion_id || genId('VIN'), usuario_id: c.usuario_id, chat_id: d.chat_id,\n    telegram_username: d.username, fecha_vinculacion: ahora, estado: 'ACTIVA' }\n});\n"
+      },
+      "id": "935b3474-8dfa-46c7-8f84-1760e96df0ce",
+      "name": "Validar código y vigencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "1f044353-8288-42ce-bc49-7203d0f7b806",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "vincular",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "vincular"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "4e0f6b97-5487-4b1e-9180-bbb5e8613568",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "expirar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "expirar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "otro"
+        }
+      },
+      "id": "0e0b77e8-eb17-4fc1-8f29-fe528188f28e",
+      "name": "Resultado de validación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"codigo_id\",\"usuario_id\",\"codigo\",\"creado_en\",\"expira_en\",\"estado\",\"usado_en\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar código y vigencia').first().json.codigoRow;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "05ee82b7-2d0e-46db-b60c-9acf5c67a3b8",
+      "name": "Fila: Marcar código usado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Codigos_Vinculacion"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "codigo_id"
+          ],
+          "schema": [
+            {
+              "id": "codigo_id",
+              "displayName": "codigo_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creado_en",
+              "displayName": "creado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expira_en",
+              "displayName": "expira_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usado_en",
+              "displayName": "usado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "codigo_id"
+      },
+      "id": "022f12fe-f62e-45fd-abe5-447627e36d8f",
+      "name": "Marcar código usado",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        540
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"vinculacion_id\",\"usuario_id\",\"chat_id\",\"telegram_username\",\"fecha_vinculacion\",\"estado\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar código y vigencia').first().json.vincRow;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "89da6273-3e1e-4ee1-b8f4-d8cba6c80493",
+      "name": "Fila: Guardar vinculación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Vinculaciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "usuario_id"
+          ],
+          "schema": [
+            {
+              "id": "vinculacion_id",
+              "displayName": "vinculacion_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telegram_username",
+              "displayName": "telegram_username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_vinculacion",
+              "displayName": "fecha_vinculacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "usuario_id"
+      },
+      "id": "75b02774-8ead-45b6-ad22-9208469398a7",
+      "name": "Guardar vinculación",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2160,
+        540
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COLS = [\"codigo_id\",\"usuario_id\",\"codigo\",\"creado_en\",\"expira_en\",\"estado\",\"usado_en\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar código y vigencia').first().json.codigoRow;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      },
+      "id": "5c331c8c-bb4d-4a7f-834d-598a111710e3",
+      "name": "Fila: Marcar código expirado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KNDtECM9V2DZE2-t6mCbc8lxx95prNCZE70TH72z-VM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Codigos_Vinculacion"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "codigo_id"
+          ],
+          "schema": [
+            {
+              "id": "codigo_id",
+              "displayName": "codigo_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usuario_id",
+              "displayName": "usuario_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo",
+              "displayName": "codigo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creado_en",
+              "displayName": "creado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expira_en",
+              "displayName": "expira_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usado_en",
+              "displayName": "usado_en",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        },
+        "columnToMatchOn": "codigo_id"
+      },
+      "id": "392c6fbe-92f2-4a83-a653-1e2554ef7de1",
+      "name": "Marcar código expirado",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        720
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ANlXgYw1OzinSzi4",
+          "name": "Google Sheets EventPass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extraer código').first().json.chat_id }}",
+        "text": "={{ $('Validar código y vigencia').first().json.reply }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "81d346c1-46f7-41b6-9bfd-5f0a8f5b55ad",
+      "name": "Responder en Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        720
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "72jKS0Ajfwy8aYW7",
+          "name": "Telegram EventPass"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Fila: Guardar código": {
+      "main": [
+        [
+          {
+            "node": "Guardar código",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Desactivar vinculación": {
+      "main": [
+        [
+          {
+            "node": "Desactivar vinculación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Leer Sesiones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Sesiones": {
+      "main": [
+        [
+          {
+            "node": "Leer Usuarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Usuarios": {
+      "main": [
+        [
+          {
+            "node": "Leer Códigos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Códigos": {
+      "main": [
+        [
+          {
+            "node": "Leer Vinculaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Vinculaciones": {
+      "main": [
+        [
+          {
+            "node": "Validar sesión y generar código",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar sesión y generar código": {
+      "main": [
+        [
+          {
+            "node": "Enrutar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrutar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Fila: Guardar código",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fila: Desactivar vinculación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar código": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desactivar vinculación": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Marcar código usado": {
+      "main": [
+        [
+          {
+            "node": "Marcar código usado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Guardar vinculación": {
+      "main": [
+        [
+          {
+            "node": "Guardar vinculación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fila: Marcar código expirado": {
+      "main": [
+        [
+          {
+            "node": "Marcar código expirado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extraer código",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer código": {
+      "main": [
+        [
+          {
+            "node": "Leer Códigos (bot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Códigos (bot)": {
+      "main": [
+        [
+          {
+            "node": "Leer Vinculaciones (bot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Vinculaciones (bot)": {
+      "main": [
+        [
+          {
+            "node": "Validar código y vigencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar código y vigencia": {
+      "main": [
+        [
+          {
+            "node": "Resultado de validación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado de validación": {
+      "main": [
+        [
+          {
+            "node": "Fila: Marcar código usado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fila: Marcar código expirado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar código usado": {
+      "main": [
+        [
+          {
+            "node": "Fila: Guardar vinculación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar vinculación": {
+      "main": [
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar código expirado": {
+      "main": [
+        [
+          {
+            "node": "Responder en Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
