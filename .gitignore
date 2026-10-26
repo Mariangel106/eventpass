@@ -10,3 +10,5 @@ coverage/
 # Configuración personal del generador (IDs de tus hojas y credenciales)
 n8n/config.json
 .vercel
+# Salida del generador (los JSON de la entrega son los exportados desde n8n)
+n8n/generados/

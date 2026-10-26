@@ -2,6 +2,14 @@
   "name": "WF07 - Reasignación de lista de espera",
   "nodes": [
     {
+      "id": "2af7ca36-57f9-4cb6-bf2e-ebddcb5e267a",
+      "name": "Cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        180
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -11,17 +19,21 @@
             }
           ]
         }
-      },
-      "id": "e6e23e81-35eb-4ec8-b74e-7f05065ef409",
-      "name": "Cada 5 minutos",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        180
-      ]
+      }
     },
     {
+      "id": "cec806ed-d247-4e73-b765-4bf33c78fc1f",
+      "name": "Leer Eventos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        240,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -36,18 +48,6 @@
         },
         "options": {}
       },
-      "id": "84b1d86c-c6ad-4ece-ad7e-83223236c5ed",
-      "name": "Leer Eventos",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        240,
-        180
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -56,6 +56,19 @@
       }
     },
     {
+      "id": "cf4cdbd3-a136-4d21-b8b8-fde33d0c3483",
+      "name": "Leer Inscripciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        480,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -70,19 +83,6 @@
         },
         "options": {}
       },
-      "id": "e9491fb8-594c-417c-88d5-6c1b4296bdfa",
-      "name": "Leer Inscripciones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        480,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -91,32 +91,43 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\n// Filter: solo eventos PUBLICADOS que aún no ocurren\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO')\n  .filter((e) => { const d = inicioEvento(e); return !d.isValid || d > DateTime.now(); });\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst salida = [];\nfor (const e of eventos) {\n  const delEvento = insc.filter((i) => i.evento_id === e.evento_id);\n  const confirmadas = delEvento.filter((i) => i.estado === 'CONFIRMADA').length;\n  const libres = (Number(e.capacidad) || 0) - confirmadas;\n  if (libres <= 0) continue;\n  // Prioridad: fecha_inscripcion ASC (quien más tiempo lleva esperando)\n  const espera = delEvento.filter((i) => i.estado === 'LISTA_ESPERA')\n    .sort((a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion)));\n  espera.slice(0, libres).forEach((i, idx) => {\n    salida.push({ json: {\n      inscripcion: { ...pick(i), estado: 'CONFIRMADA', orden_espera: '', fecha_actualizacion: ahora },\n      reasignacion: { reasignacion_id: genId('REA'), evento_id: e.evento_id, inscripcion_id: i.inscripcion_id,\n        usuario_id: i.usuario_id, fecha: ahora, orden_lista: String(idx + 1), estado_anterior: 'LISTA_ESPERA',\n        estado_nuevo: 'CONFIRMADA', resultado_notificacion: 'PENDIENTE' },\n      notif: { usuario_id: i.usuario_id, tipo: 'REASIGNACION_CUPO', titulo: `¡Se liberó un cupo! ${e.nombre}`,\n        mensaje: `Buenas noticias: se liberó un cupo en \"${e.nombre}\" y tu inscripción ${i.inscripcion_id} pasó de LISTA DE ESPERA a CONFIRMADA.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: `REASIGNACION|${i.inscripcion_id}` }\n    } });\n  });\n}\nreturn salida;\n"
-      },
-      "id": "5a455945-0d6c-45a9-a811-5e333d65c15b",
+      "id": "f8f32c96-9017-4d4d-ac0e-dea33871a811",
       "name": "Calcular cupos y ordenar lista",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         720,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\n// Filter: solo eventos PUBLICADOS que aún no ocurren\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO')\n  .filter((e) => { const d = inicioEvento(e); return !d.isValid || d > DateTime.now(); });\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst salida = [];\nfor (const e of eventos) {\n  const delEvento = insc.filter((i) => i.evento_id === e.evento_id);\n  const confirmadas = delEvento.filter((i) => i.estado === 'CONFIRMADA').length;\n  const libres = (Number(e.capacidad) || 0) - confirmadas;\n  if (libres <= 0) continue;\n  // Prioridad: fecha_inscripcion ASC (quien más tiempo lleva esperando)\n  const espera = delEvento.filter((i) => i.estado === 'LISTA_ESPERA')\n    .sort((a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion)));\n  espera.slice(0, libres).forEach((i, idx) => {\n    salida.push({ json: {\n      inscripcion: { ...pick(i), estado: 'CONFIRMADA', orden_espera: '', fecha_actualizacion: ahora },\n      reasignacion: { reasignacion_id: genId('REA'), evento_id: e.evento_id, inscripcion_id: i.inscripcion_id,\n        usuario_id: i.usuario_id, fecha: ahora, orden_lista: String(idx + 1), estado_anterior: 'LISTA_ESPERA',\n        estado_nuevo: 'CONFIRMADA', resultado_notificacion: 'PENDIENTE' },\n      notif: { usuario_id: i.usuario_id, tipo: 'REASIGNACION_CUPO', titulo: `¡Se liberó un cupo! ${e.nombre}`,\n        mensaje: `Buenas noticias: se liberó un cupo en \"${e.nombre}\" y tu inscripción ${i.inscripcion_id} pasó de LISTA DE ESPERA a CONFIRMADA.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: `REASIGNACION|${i.inscripcion_id}` }\n    } });\n  });\n}\nreturn salida;\n"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Calcular cupos y ordenar lista').all().map((i) => i.json.inscripcion);\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "d4f12f8d-2403-4520-a220-ac99eacbdc4e",
+      "id": "ce8e0aff-7818-4dcb-9633-437f21ad7774",
       "name": "Fila: Promover inscripción",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Calcular cupos y ordenar lista').all().map((i) => i.json.inscripcion);\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "c59aa80d-9b9a-4058-b762-9dd32b34ae34",
+      "name": "Promover inscripción",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1200,
+        180
+      ],
       "parameters": {
         "operation": "update",
         "documentId": {
@@ -242,17 +253,6 @@
         },
         "columnToMatchOn": "inscripcion_id"
       },
-      "id": "ecf1ee2d-2e04-4027-9301-9e0b4108f9dc",
-      "name": "Promover inscripción",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1200,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -261,19 +261,27 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "return $('Calcular cupos y ordenar lista').all().map((i) => ({ json: i.json.notif }));\n"
-      },
-      "id": "7569b3ce-494c-48b4-b339-23ec93fbe5fe",
+      "id": "f88ebbd9-c43e-476c-8387-32453779a443",
       "name": "Datos de notificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "return $('Calcular cupos y ordenar lista').all().map((i) => ({ json: i.json.notif }));\n"
+      }
     },
     {
+      "id": "88f6bfca-fb7c-4de4-86d3-45ae4097e77b",
+      "name": "Notificar (WF09)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        180
+      ],
       "parameters": {
         "workflowId": {
           "__rl": true,
@@ -284,30 +292,33 @@
         "options": {
           "waitForSubWorkflow": true
         }
-      },
-      "id": "4051832c-04ef-4e09-b265-7742b0b63b26",
-      "name": "Notificar (WF09)",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
-      "position": [
-        1680,
-        180
-      ]
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"reasignacion_id\",\"evento_id\",\"inscripcion_id\",\"usuario_id\",\"fecha\",\"orden_lista\",\"estado_anterior\",\"estado_nuevo\",\"resultado_notificacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const resultados = $input.all();\n  return $('Calcular cupos y ordenar lista').all().map((it, idx) => {\n    const r = resultados[idx]?.json || {};\n    return { ...it.json.reasignacion,\n      resultado_notificacion: `GMAIL:${r.gmail_estado || 'DESCONOCIDO'} | TELEGRAM:${r.telegram_estado || 'DESCONOCIDO'}` };\n  });\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "41d7df29-7ea9-42b7-8bc8-4bc835078ec2",
+      "id": "f906070c-e1bf-452b-aba8-0d43f9f2ef9f",
       "name": "Fila: Registrar reasignación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1920,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"reasignacion_id\",\"evento_id\",\"inscripcion_id\",\"usuario_id\",\"fecha\",\"orden_lista\",\"estado_anterior\",\"estado_nuevo\",\"resultado_notificacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const resultados = $input.all();\n  return $('Calcular cupos y ordenar lista').all().map((it, idx) => {\n    const r = resultados[idx]?.json || {};\n    return { ...it.json.reasignacion,\n      resultado_notificacion: `GMAIL:${r.gmail_estado || 'DESCONOCIDO'} | TELEGRAM:${r.telegram_estado || 'DESCONOCIDO'}` };\n  });\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "97f1e6c9-3b04-467e-8d54-4229f1366b90",
+      "name": "Registrar reasignación",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        2160,
+        180
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -412,17 +423,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "736696c6-4d10-47e2-a09f-9584206eb477",
-      "name": "Registrar reasignación",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        2160,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -431,19 +431,30 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"auditoria_id\",\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"accion\",\"estado_anterior\",\"estado_nuevo\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Calcular cupos y ordenar lista').all().map((i) => ({\n  auditoria_id: `AUD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`,\n  inscripcion_id: i.json.reasignacion.inscripcion_id, usuario_id: i.json.reasignacion.usuario_id,\n  evento_id: i.json.reasignacion.evento_id, accion: 'REASIGNAR', estado_anterior: 'LISTA_ESPERA',\n  estado_nuevo: 'CONFIRMADA', fecha: new Date().toISOString(), resultado: 'OK',\n  detalle: `Promovida automáticamente (orden ${i.json.reasignacion.orden_lista})` }));\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "59852d96-70c7-4a52-a7e0-e6b6d0611696",
+      "id": "3fa7a600-9e87-43c8-a732-eb78bbafaf7d",
       "name": "Fila: Auditoría inscripciones",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         2400,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"auditoria_id\",\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"accion\",\"estado_anterior\",\"estado_nuevo\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Calcular cupos y ordenar lista').all().map((i) => ({\n  auditoria_id: `AUD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`,\n  inscripcion_id: i.json.reasignacion.inscripcion_id, usuario_id: i.json.reasignacion.usuario_id,\n  evento_id: i.json.reasignacion.evento_id, accion: 'REASIGNAR', estado_anterior: 'LISTA_ESPERA',\n  estado_nuevo: 'CONFIRMADA', fecha: new Date().toISOString(), resultado: 'OK',\n  detalle: `Promovida automáticamente (orden ${i.json.reasignacion.orden_lista})` }));\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "4a96077d-6a4b-42bf-994f-f88e0e0de9f7",
+      "name": "Auditoría inscripciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        2640,
+        180
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -557,17 +568,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "af8d7842-4194-4f2f-979d-e63f47b55a22",
-      "name": "Auditoría inscripciones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        2640,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -576,6 +576,7 @@
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Fila: Promover inscripción": {
       "main": [
@@ -699,13 +700,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "America/Bogota"
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
   },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
-  }
+  "versionId": "fe7a0092-b9a2-448c-8a5b-c781b7b98c63",
+  "meta": {},
+  "id": "6JZlkK6SKykWgoyD",
+  "tags": []
 }

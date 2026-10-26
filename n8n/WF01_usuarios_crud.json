@@ -2,6 +2,15 @@
   "name": "WF01 - Usuarios CRUD",
   "nodes": [
     {
+      "id": "63d736bc-87d8-4906-b2f3-43df3e703d32",
+      "name": "Webhook",
+      "webhookId": "2c2931f8-7ff0-47b6-99ec-2f8b3cd6b4f5",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        180
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "ep/usuarios",
@@ -9,18 +18,21 @@
         "options": {
           "allowedOrigins": "*"
         }
-      },
-      "id": "0ff69fc4-8195-4c73-894b-afbcbed23c05",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        0,
-        180
-      ],
-      "webhookId": "3b25ec86-bd83-673a-2712-f4b4dd012b5e"
+      }
     },
     {
+      "id": "d3ad69c0-2f6c-4cea-9226-3195d1cccda6",
+      "name": "Leer Usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        240,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -35,18 +47,6 @@
         },
         "options": {}
       },
-      "id": "9684dcec-1f1e-4df3-b422-2830a4b84f03",
-      "name": "Leer Usuarios",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        240,
-        180
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -55,6 +55,19 @@
       }
     },
     {
+      "id": "993e8fbb-4639-440a-96c8-2ffbff6daed3",
+      "name": "Leer Sesiones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        480,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -69,19 +82,6 @@
         },
         "options": {}
       },
-      "id": "785471de-4cb0-499a-bff6-694bc08caf74",
-      "name": "Leer Sesiones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        480,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -90,6 +90,19 @@
       }
     },
     {
+      "id": "bfd0f31d-a24c-4c02-a289-c32468e46f6a",
+      "name": "Leer Vinculaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        720,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -104,19 +117,6 @@
         },
         "options": {}
       },
-      "id": "8eda163b-c70b-4871-9507-aa35dee5e320",
-      "name": "Leer Vinculaciones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        720,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -125,19 +125,27 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst emailRx = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst fail = (status, error, usuario_id = '') => [{ json: { ok: false, route: 'responder', action, status, error, usuario_id } }];\nconst siNo = (v, actual) => (v === undefined ? (actual || 'SI') : (v === true || v === 'true' || v === 'SI' ? 'SI' : 'NO'));\n\nif (action === 'create') {\n  const nombre = norm(body.nombre);\n  const email = norm(body.email).toLowerCase();\n  const password = String(body.password ?? '');\n  if (!nombre) return fail(400, 'El nombre es obligatorio.');\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.');\n  if (password.length < 6) return fail(400, 'La contraseña debe tener al menos 6 caracteres.');\n  // Control de email duplicado\n  if (usuarios.some((u) => norm(u.email_normalizado).toLowerCase() === email)) {\n    return fail(409, 'Ya existe una cuenta registrada con ese correo.');\n  }\n  return [{ json: { ok: true, route: 'crear', action, nombre, email, password,\n    telefono: norm(body.telefono), ciudad: norm(body.ciudad), organizacion: norm(body.organizacion) } }];\n}\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return fail(ses.status, ses.error);\nconst u = ses.usuario;\n\nif (action === 'get') return [{ json: { ok: true, route: 'responder', action, usuario: pick(u) } }];\n\nif (action === 'update') {\n  const email = body.email !== undefined ? norm(body.email).toLowerCase() : u.email_normalizado;\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.', u.usuario_id);\n  if (usuarios.some((x) => norm(x.email_normalizado).toLowerCase() === email && x.usuario_id !== u.usuario_id)) {\n    return fail(409, 'Ese correo ya pertenece a otra cuenta.', u.usuario_id);\n  }\n  const campo = (k, actual) => (body[k] !== undefined ? norm(body[k]) : (actual || ''));\n  const row = { ...pick(u),\n    nombre: norm(body.nombre) || u.nombre,\n    email_normalizado: email,\n    telefono: campo('telefono', u.telefono),\n    ciudad: campo('ciudad', u.ciudad),\n    organizacion: campo('organizacion', u.organizacion),\n    notif_email: siNo(body.notificationEmail, u.notif_email),\n    notif_telegram: siNo(body.notificationTelegram, u.notif_telegram),\n    fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nif (action === 'deactivate') {\n  // Borrado lógico: la cuenta pasa a INACTIVO y sus sesiones dejan de ser válidas\n  const row = { ...pick(u), estado: 'INACTIVO', fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nreturn fail(400, 'Acción no soportada. Usa create, get, update o deactivate.');\n"
-      },
-      "id": "8dce1173-9930-4cc7-8e4b-d5a58bb1733e",
+      "id": "8c063deb-9138-4386-af8c-207369c2718a",
       "name": "Validar solicitud",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst emailRx = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst fail = (status, error, usuario_id = '') => [{ json: { ok: false, route: 'responder', action, status, error, usuario_id } }];\nconst siNo = (v, actual) => (v === undefined ? (actual || 'SI') : (v === true || v === 'true' || v === 'SI' ? 'SI' : 'NO'));\n\nif (action === 'create') {\n  const nombre = norm(body.nombre);\n  const email = norm(body.email).toLowerCase();\n  const password = String(body.password ?? '');\n  if (!nombre) return fail(400, 'El nombre es obligatorio.');\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.');\n  if (password.length < 6) return fail(400, 'La contraseña debe tener al menos 6 caracteres.');\n  // Control de email duplicado\n  if (usuarios.some((u) => norm(u.email_normalizado).toLowerCase() === email)) {\n    return fail(409, 'Ya existe una cuenta registrada con ese correo.');\n  }\n  return [{ json: { ok: true, route: 'crear', action, nombre, email, password,\n    telefono: norm(body.telefono), ciudad: norm(body.ciudad), organizacion: norm(body.organizacion) } }];\n}\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return fail(ses.status, ses.error);\nconst u = ses.usuario;\n\nif (action === 'get') return [{ json: { ok: true, route: 'responder', action, usuario: pick(u) } }];\n\nif (action === 'update') {\n  const email = body.email !== undefined ? norm(body.email).toLowerCase() : u.email_normalizado;\n  if (!emailRx.test(email)) return fail(400, 'El correo electrónico no es válido.', u.usuario_id);\n  if (usuarios.some((x) => norm(x.email_normalizado).toLowerCase() === email && x.usuario_id !== u.usuario_id)) {\n    return fail(409, 'Ese correo ya pertenece a otra cuenta.', u.usuario_id);\n  }\n  const campo = (k, actual) => (body[k] !== undefined ? norm(body[k]) : (actual || ''));\n  const row = { ...pick(u),\n    nombre: norm(body.nombre) || u.nombre,\n    email_normalizado: email,\n    telefono: campo('telefono', u.telefono),\n    ciudad: campo('ciudad', u.ciudad),\n    organizacion: campo('organizacion', u.organizacion),\n    notif_email: siNo(body.notificationEmail, u.notif_email),\n    notif_telegram: siNo(body.notificationTelegram, u.notif_telegram),\n    fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nif (action === 'deactivate') {\n  // Borrado lógico: la cuenta pasa a INACTIVO y sus sesiones dejan de ser válidas\n  const row = { ...pick(u), estado: 'INACTIVO', fecha_actualizacion: ahora };\n  return [{ json: { ok: true, route: 'actualizar', action, row } }];\n}\n\nreturn fail(400, 'Acción no soportada. Usa create, get, update o deactivate.');\n"
+      }
     },
     {
+      "id": "0f2996b9-433c-463b-9b82-5f3adcdb58e2",
+      "name": "Enrutar operación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        180
+      ],
       "parameters": {
         "rules": {
           "values": [
@@ -150,7 +158,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "3de13498-7810-4928-8fbe-bdea09851299",
+                    "id": "006893c2-5236-47a6-9f79-c13d0ba1494b",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "crear",
                     "operator": {
@@ -173,7 +181,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "04fff0e5-ce78-4d78-beb7-0f163439c26b",
+                    "id": "4a3add39-354c-4bd8-8845-912d8bcf6af2",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "actualizar",
                     "operator": {
@@ -193,30 +201,33 @@
           "fallbackOutput": "extra",
           "renameFallbackOutput": "otro"
         }
-      },
-      "id": "a827788c-b3af-4380-8d7d-cac6b9a1118d",
-      "name": "Enrutar operación",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1200,
-        180
-      ]
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst d = $input.first().json;\nconst ahora = new Date().toISOString();\n// PBKDF2-SHA256 con salt aleatorio de 16 bytes y 100.000 iteraciones\nconst salt = crypto.randomBytes(16).toString('hex');\nconst hash = crypto.pbkdf2Sync(d.password, salt, 100000, 32, 'sha256').toString('hex');\nconst usuario_id = `USR-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;\nreturn [{ json: {\n  usuario_id, nombre: d.nombre, email_normalizado: d.email, password_hash: hash, password_salt: salt,\n  estado: 'ACTIVO', fecha_registro: ahora, fecha_actualizacion: ahora,\n  telefono: d.telefono, ciudad: d.ciudad, organizacion: d.organizacion, notif_email: 'SI', notif_telegram: 'SI'\n} }];\n"
-      },
-      "id": "821df89d-fd09-4f7d-bac3-7529e426f1d9",
+      "id": "f7cc7bef-add1-4ff6-a0a2-ba9cfb41c190",
       "name": "Generar hash, salt y usuario_id",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
         0
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst d = $input.first().json;\nconst ahora = new Date().toISOString();\n// PBKDF2-SHA256 con salt aleatorio de 16 bytes y 100.000 iteraciones\nconst salt = crypto.randomBytes(16).toString('hex');\nconst hash = crypto.pbkdf2Sync(d.password, salt, 100000, 32, 'sha256').toString('hex');\nconst usuario_id = `USR-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;\nreturn [{ json: {\n  usuario_id, nombre: d.nombre, email_normalizado: d.email, password_hash: hash, password_salt: salt,\n  estado: 'ACTIVO', fecha_registro: ahora, fecha_actualizacion: ahora,\n  telefono: d.telefono, ciudad: d.ciudad, organizacion: d.organizacion, notif_email: 'SI', notif_telegram: 'SI'\n} }];\n"
+      }
     },
     {
+      "id": "a219064f-73f7-40d1-a772-b654c5229dcd",
+      "name": "Crear usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1680,
+        0
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -357,17 +368,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "8373bb14-6b0a-4b21-a1e4-823a9966611c",
-      "name": "Crear usuario",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1680,
-        0
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -376,19 +376,30 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar solicitud').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "27acc352-6ced-4fc1-81b0-b0c0792f9961",
+      "id": "6acce1f7-b3c2-4bdb-93ba-82094d1041ee",
       "name": "Fila: Actualizar usuario",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"usuario_id\",\"nombre\",\"email_normalizado\",\"password_hash\",\"password_salt\",\"estado\",\"fecha_registro\",\"fecha_actualizacion\",\"telefono\",\"ciudad\",\"organizacion\",\"notif_email\",\"notif_telegram\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Validar solicitud').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "b1f8ad30-0e63-4caf-8d4b-ea322d855cdb",
+      "name": "Actualizar usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1680,
+        180
+      ],
       "parameters": {
         "operation": "update",
         "documentId": {
@@ -532,17 +543,6 @@
         },
         "columnToMatchOn": "usuario_id"
       },
-      "id": "bfa08e56-9a48-48a0-8d17-5a3ac472ac83",
-      "name": "Actualizar usuario",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1680,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -551,32 +551,43 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Perfil público (sin hash ni salt) en el formato que espera el frontend.\nfunction perfil(u, vinculaciones) {\n  const v = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  return {\n    usuario_id: u.usuario_id, name: u.nombre, email: u.email_normalizado, phone: u.telefono || '',\n    city: u.ciudad || '', organization: u.organizacion || '', estado: u.estado,\n    telegramLinked: Boolean(v), telegramUsername: v ? v.telegram_username : undefined,\n    notificationEmail: u.notif_email !== 'NO', notificationTelegram: u.notif_telegram !== 'NO'\n  };\n}\n\nconst v = $('Validar solicitud').first().json;\nconst vinculaciones = rows('Leer Vinculaciones', 'usuario_id');\nconst mensajes = { create: 'Cuenta creada correctamente.', get: 'Perfil consultado.',\n  update: 'Perfil actualizado correctamente.', deactivate: 'La cuenta fue desactivada.' };\nlet status, body, usuario_id = v.usuario_id || '', resultado, detalle;\nif (!v.ok) {\n  status = v.status; body = { success: false, error: v.error }; resultado = 'ERROR'; detalle = v.error;\n} else {\n  const u = v.route === 'crear' ? $('Generar hash, salt y usuario_id').first().json\n    : v.route === 'actualizar' ? v.row : v.usuario;\n  status = v.route === 'crear' ? 201 : 200;\n  body = { success: true, data: perfil(u, vinculaciones), message: mensajes[v.action] };\n  usuario_id = u.usuario_id; resultado = 'OK'; detalle = mensajes[v.action];\n}\nconst audit = { auditoria_id: genId('AUD'), usuario_id, accion: (v.action || 'desconocida').toUpperCase(),\n  fecha: ahora, resultado, detalle };\nreturn [{ json: { status, body, audit } }];\n"
-      },
-      "id": "ebe328ce-cc71-488e-85f0-aeae900da92b",
+      "id": "2bfd610a-ee43-4cf1-9240-8a801572e399",
       "name": "Construir respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1920,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Perfil público (sin hash ni salt) en el formato que espera el frontend.\nfunction perfil(u, vinculaciones) {\n  const v = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  return {\n    usuario_id: u.usuario_id, name: u.nombre, email: u.email_normalizado, phone: u.telefono || '',\n    city: u.ciudad || '', organization: u.organizacion || '', estado: u.estado,\n    telegramLinked: Boolean(v), telegramUsername: v ? v.telegram_username : undefined,\n    notificationEmail: u.notif_email !== 'NO', notificationTelegram: u.notif_telegram !== 'NO'\n  };\n}\n\nconst v = $('Validar solicitud').first().json;\nconst vinculaciones = rows('Leer Vinculaciones', 'usuario_id');\nconst mensajes = { create: 'Cuenta creada correctamente.', get: 'Perfil consultado.',\n  update: 'Perfil actualizado correctamente.', deactivate: 'La cuenta fue desactivada.' };\nlet status, body, usuario_id = v.usuario_id || '', resultado, detalle;\nif (!v.ok) {\n  status = v.status; body = { success: false, error: v.error }; resultado = 'ERROR'; detalle = v.error;\n} else {\n  const u = v.route === 'crear' ? $('Generar hash, salt y usuario_id').first().json\n    : v.route === 'actualizar' ? v.row : v.usuario;\n  status = v.route === 'crear' ? 201 : 200;\n  body = { success: true, data: perfil(u, vinculaciones), message: mensajes[v.action] };\n  usuario_id = u.usuario_id; resultado = 'OK'; detalle = mensajes[v.action];\n}\nconst audit = { auditoria_id: genId('AUD'), usuario_id, accion: (v.action || 'desconocida').toUpperCase(),\n  fecha: ahora, resultado, detalle };\nreturn [{ json: { status, body, audit } }];\n"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"auditoria_id\",\"usuario_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Construir respuesta').first().json.audit;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "34d72921-8c69-496a-b79b-db5fc8faf4eb",
+      "id": "5d521e01-58db-4525-b632-ed4c778cddb4",
       "name": "Fila: Auditoría usuarios",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         2160,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"auditoria_id\",\"usuario_id\",\"accion\",\"fecha\",\"resultado\",\"detalle\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Construir respuesta').first().json.audit;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "1fe02296-0b05-45ce-82ae-a41bf716300e",
+      "name": "Auditoría usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        2400,
+        180
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -654,17 +665,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "0304fcd3-1ec1-4567-8aa2-140312685946",
-      "name": "Auditoría usuarios",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        2400,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -673,23 +673,24 @@
       }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($('Construir respuesta').first().json.body) }}",
-        "options": {
-          "responseCode": "={{ $('Construir respuesta').first().json.status }}"
-        }
-      },
-      "id": "bdbec9b6-4dd9-4b9e-956e-967ea2d6c94e",
+      "id": "44dd9861-a598-4196-9ed7-1e9a3483ccbb",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
         2640,
         180
-      ]
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Construir respuesta').first().json.body) }}",
+        "options": {
+          "responseCode": "={{ $('Construir respuesta').first().json.status }}"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
     "Fila: Actualizar usuario": {
       "main": [
@@ -849,13 +850,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "America/Bogota"
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
   },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
-  }
+  "versionId": "9d6b90f2-93d8-492a-9757-7a4e3b1bbf7f",
+  "meta": {},
+  "id": "iHLQUQkTcDW3fLyN",
+  "tags": []
 }

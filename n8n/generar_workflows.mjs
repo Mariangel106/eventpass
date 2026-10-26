@@ -6,15 +6,16 @@
  *   cp n8n/config.example.json n8n/config.json   # completa IDs de hojas y credenciales
  *   node n8n/generar_workflows.mjs
  *
- * Genera n8n/WF01_usuarios_crud.json ... n8n/WF10_eventpass_assistant.json, listos para
- * importar en n8n (Workflows -> Import from File).
+ * Genera n8n/generados/WF00..WF10_*.json, listos para importar en n8n (Import from File o
+ * node n8n/importar_workflows.mjs). Los JSON de la entrega (n8n/WF*.json) son los descargados
+ * de n8n con node n8n/exportar_workflows.mjs; este generador no los toca.
  *
  * El código de cada Code Node se escribe aquí como una función normal de JavaScript y el
  * generador copia su cuerpo al JSON. Los marcadores __CFG_x__ y __COLS_Hoja__ se reemplazan
  * por valores de config.json y por la lista de columnas de la hoja.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -210,7 +211,8 @@ class Workflow {
   }
 
   save(filename) {
-    writeFileSync(join(BASE, filename), JSON.stringify(this.toJSON(), null, 2) + '\n', 'utf-8');
+    mkdirSync(join(BASE, 'generados'), { recursive: true });
+    writeFileSync(join(BASE, 'generados', filename), JSON.stringify(this.toJSON(), null, 2) + '\n', 'utf-8');
     console.log(`  ✓ ${filename} (${this.nodes.length} nodos)`);
   }
 }

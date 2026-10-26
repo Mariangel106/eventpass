@@ -117,7 +117,7 @@ Edita `n8n/config.json`:
 node n8n/generar_workflows.mjs
 ```
 
-En n8n: **Add workflow → ⋯ → Import from File** → `n8n/WF09_notificaciones.json` → **Save**.
+Los archivos quedan en `n8n/generados/`. En n8n: **Add workflow → ⋯ → Import from File** → `n8n/generados/WF09_notificaciones.json` → **Save**.
 Copia el ID del workflow de la URL (`.../workflow/XyZ123`) y ponlo en `wf09_id` de `config.json`.
 
 ### 6.3 Regenerar e importar el resto
@@ -202,7 +202,13 @@ Abre <http://localhost:3000>.
 
 ## 10. Exportar los workflows para la entrega
 
-El enunciado pide los JSON **descargados de tu instancia de n8n**. Cuando todo funcione:
+El enunciado pide los JSON **descargados de tu instancia de n8n**. Con la clave de la API de n8n en `~/.n8n_api_key`, un solo comando los descarga todos con los nombres correctos:
+
+```bash
+node n8n/exportar_workflows.mjs
+```
+
+O a mano, desde el editor:
 
 1. Abre cada workflow → **⋯ → Download**.
 2. Guarda cada archivo en `n8n/` con su nombre obligatorio, reemplazando el generado:

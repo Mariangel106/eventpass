@@ -2,6 +2,14 @@
   "name": "WF08 - Recordatorios automáticos",
   "nodes": [
     {
+      "id": "39b9baac-8e07-4ac9-bc8a-6a242d59bf7d",
+      "name": "Cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        180
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -11,17 +19,21 @@
             }
           ]
         }
-      },
-      "id": "840aa6df-f9d3-400f-90fb-b25bf0313337",
-      "name": "Cada hora",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        180
-      ]
+      }
     },
     {
+      "id": "7947d832-f031-42c0-b53d-5d0fbccd9108",
+      "name": "Leer Eventos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        240,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -36,18 +48,6 @@
         },
         "options": {}
       },
-      "id": "7fb16e48-468e-4d5e-8bf6-e1503477f6a5",
-      "name": "Leer Eventos",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        240,
-        180
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -56,6 +56,19 @@
       }
     },
     {
+      "id": "b79a392c-7e6d-4a07-8b67-4232e8a84179",
+      "name": "Leer Inscripciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        480,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -70,19 +83,6 @@
         },
         "options": {}
       },
-      "id": "5a279dd0-b2c4-44d2-b9e7-4e73399be128",
-      "name": "Leer Inscripciones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        480,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -91,6 +91,19 @@
       }
     },
     {
+      "id": "d366437e-0cca-4817-9b56-55fa7560b59c",
+      "name": "Leer Recordatorios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        720,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -105,19 +118,6 @@
         },
         "options": {}
       },
-      "id": "ac211758-10f3-4c74-8cab-4fb9740a4d63",
-      "name": "Leer Recordatorios",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        720,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -126,32 +126,40 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Ventanas de recordatorio: se envía la más cercana que aplique\nconst TIPOS = [{ tipo: 'RECORDATORIO_24H', horas: 24 }, { tipo: 'RECORDATORIO_72H', horas: 72 }];\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO');\nconst insc = rows('Leer Inscripciones', 'inscripcion_id').filter((i) => i.estado === 'CONFIRMADA');\n// Control de duplicados: la clave usuario_id|evento_id|tipo ya ENVIADA u OMITIDA no se repite\nconst yaProcesadas = new Set(rows('Leer Recordatorios', 'recordatorio_id')\n  .filter((r) => ['ENVIADO', 'OMITIDO'].includes(r.estado)).map((r) => r.clave_idempotencia));\nconst salida = [];\nfor (const e of eventos) {\n  const inicio = inicioEvento(e);\n  if (!inicio.isValid) continue;\n  const horas = inicio.diff(DateTime.now(), 'hours').hours;\n  if (horas <= 0) continue;\n  const t = TIPOS.find((x) => horas <= x.horas);\n  if (!t) continue;\n  for (const i of insc.filter((x) => x.evento_id === e.evento_id)) {\n    const clave = `${i.usuario_id}|${e.evento_id}|${t.tipo}`;\n    if (yaProcesadas.has(clave)) continue;\n    yaProcesadas.add(clave);\n    const cuando = t.horas === 24 ? 'mañana' : 'en los próximos días';\n    salida.push({ json: {\n      recordatorio: { recordatorio_id: genId('REC'), usuario_id: i.usuario_id, evento_id: e.evento_id,\n        inscripcion_id: i.inscripcion_id, tipo_recordatorio: t.tipo,\n        fecha_programada: inicio.minus({ hours: t.horas }).toISO(), fecha_envio: '', estado: 'PENDIENTE', clave_idempotencia: clave },\n      notif: { usuario_id: i.usuario_id, tipo: t.tipo, titulo: `Recordatorio: ${e.nombre}`,\n        mensaje: `Te recordamos que \"${e.nombre}\" es ${cuando}.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}\\nPresenta tu código ${i.inscripcion_id} en el acceso.`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: clave }\n    } });\n  }\n}\nreturn salida;\n"
-      },
-      "id": "cdee4a80-5e95-44e0-ae2e-4f010a2b42c4",
+      "id": "f671e69d-7ab9-4bdf-a31d-f9c720de14dc",
       "name": "Detectar recordatorios pendientes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Ventanas de recordatorio: se envía la más cercana que aplique\nconst TIPOS = [{ tipo: 'RECORDATORIO_24H', horas: 24 }, { tipo: 'RECORDATORIO_72H', horas: 72 }];\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO');\nconst insc = rows('Leer Inscripciones', 'inscripcion_id').filter((i) => i.estado === 'CONFIRMADA');\n// Control de duplicados: la clave usuario_id|evento_id|tipo ya ENVIADA u OMITIDA no se repite\nconst yaProcesadas = new Set(rows('Leer Recordatorios', 'recordatorio_id')\n  .filter((r) => ['ENVIADO', 'OMITIDO'].includes(r.estado)).map((r) => r.clave_idempotencia));\nconst salida = [];\nfor (const e of eventos) {\n  const inicio = inicioEvento(e);\n  if (!inicio.isValid) continue;\n  const horas = inicio.diff(DateTime.now(), 'hours').hours;\n  if (horas <= 0) continue;\n  const t = TIPOS.find((x) => horas <= x.horas);\n  if (!t) continue;\n  for (const i of insc.filter((x) => x.evento_id === e.evento_id)) {\n    const clave = `${i.usuario_id}|${e.evento_id}|${t.tipo}`;\n    if (yaProcesadas.has(clave)) continue;\n    yaProcesadas.add(clave);\n    const cuando = t.horas === 24 ? 'mañana' : 'en los próximos días';\n    salida.push({ json: {\n      recordatorio: { recordatorio_id: genId('REC'), usuario_id: i.usuario_id, evento_id: e.evento_id,\n        inscripcion_id: i.inscripcion_id, tipo_recordatorio: t.tipo,\n        fecha_programada: inicio.minus({ hours: t.horas }).toISO(), fecha_envio: '', estado: 'PENDIENTE', clave_idempotencia: clave },\n      notif: { usuario_id: i.usuario_id, tipo: t.tipo, titulo: `Recordatorio: ${e.nombre}`,\n        mensaje: `Te recordamos que \"${e.nombre}\" es ${cuando}.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}\\nPresenta tu código ${i.inscripcion_id} en el acceso.`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: clave }\n    } });\n  }\n}\nreturn salida;\n"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "return $input.all().map((i) => ({ json: i.json.notif }));\n"
-      },
-      "id": "7409fa82-d768-4506-b49c-d53f91965b53",
+      "id": "2db02a14-b80e-451c-aeb6-fd475c939e76",
       "name": "Datos de notificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1200,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().map((i) => ({ json: i.json.notif }));\n"
+      }
     },
     {
+      "id": "134847aa-c964-4e0b-a109-a4bf208e1a3a",
+      "name": "Notificar (WF09)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        180
+      ],
       "parameters": {
         "workflowId": {
           "__rl": true,
@@ -162,30 +170,33 @@
         "options": {
           "waitForSubWorkflow": true
         }
-      },
-      "id": "8ad1dfbb-de09-4d13-b6d0-17bd10588628",
-      "name": "Notificar (WF09)",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
-      "position": [
-        1440,
-        180
-      ]
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"recordatorio_id\",\"usuario_id\",\"evento_id\",\"inscripcion_id\",\"tipo_recordatorio\",\"fecha_programada\",\"fecha_envio\",\"estado\",\"clave_idempotencia\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const res = $input.all();\n  return $('Detectar recordatorios pendientes').all().map((it, idx) => {\n    const r = res[idx]?.json || {};\n    const enviado = r.gmail_estado === 'ENVIADO' || r.telegram_estado === 'ENVIADO';\n    const estado = r.omitido ? 'OMITIDO' : enviado ? 'ENVIADO' : 'ERROR';\n    return { ...it.json.recordatorio, estado, fecha_envio: enviado ? new Date().toISOString() : '' };\n  });\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "3f0af21e-813f-4ba5-8c94-d6b517d3d94b",
+      "id": "49032b02-c9f8-4e23-aa80-040405b4292f",
       "name": "Fila: Registrar recordatorio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1680,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"recordatorio_id\",\"usuario_id\",\"evento_id\",\"inscripcion_id\",\"tipo_recordatorio\",\"fecha_programada\",\"fecha_envio\",\"estado\",\"clave_idempotencia\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = (() => {\n  const res = $input.all();\n  return $('Detectar recordatorios pendientes').all().map((it, idx) => {\n    const r = res[idx]?.json || {};\n    const enviado = r.gmail_estado === 'ENVIADO' || r.telegram_estado === 'ENVIADO';\n    const estado = r.omitido ? 'OMITIDO' : enviado ? 'ENVIADO' : 'ERROR';\n    return { ...it.json.recordatorio, estado, fecha_envio: enviado ? new Date().toISOString() : '' };\n  });\n})();\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "84aa1097-0449-4123-b363-eeba3940a8c4",
+      "name": "Registrar recordatorio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1920,
+        180
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -290,17 +301,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "2a5b5649-f22e-408a-8e06-df32400d2db8",
-      "name": "Registrar recordatorio",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1920,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -309,6 +309,7 @@
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Fila: Registrar recordatorio": {
       "main": [
@@ -399,13 +400,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "America/Bogota"
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
   },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
-  }
+  "versionId": "a3a61600-7097-48d9-8604-4a3c8e2db95b",
+  "meta": {},
+  "id": "uchntaZJUQDOZLCl",
+  "tags": []
 }

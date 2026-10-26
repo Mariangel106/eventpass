@@ -2,8 +2,10 @@
 /**
  * EventPass - Importa (o actualiza) workflows en n8n usando su API pública y los activa.
  *
+ * Lee los archivos de n8n/generados/ (salida de generar_workflows.mjs).
+ *
  * Uso:
- *   node n8n/importar_workflows.mjs                       # importa WF01..WF10
+ *   node n8n/importar_workflows.mjs                      # importa WF01..WF10
  *   node n8n/importar_workflows.mjs WF00_crear_google_sheets.json
  *   node n8n/importar_workflows.mjs --sin-activar WF09_notificaciones.json
  *
@@ -26,7 +28,8 @@ const API_KEY = process.env.N8N_API_KEY || readFileSync(join(homedir(), '.n8n_ap
 const args = process.argv.slice(2);
 const activar = !args.includes('--sin-activar');
 const archivos = args.filter((a) => !a.startsWith('--'));
-const lista = archivos.length ? archivos : readdirSync(BASE).filter((f) => /^WF(0[1-9]|10)_.*\.json$/.test(f)).sort();
+const GENERADOS = join(BASE, 'generados');
+const lista = archivos.length ? archivos : readdirSync(GENERADOS).filter((f) => /^WF(0[1-9]|10)_.*\.json$/.test(f)).sort();
 
 async function api(method, path, body) {
   const res = await fetch(`${N8N_URL}/api/v1${path}`, {
@@ -43,7 +46,7 @@ async function api(method, path, body) {
 const existentes = (await api('GET', '/workflows?limit=250')).data;
 
 for (const archivo of lista) {
-  const wf = JSON.parse(readFileSync(join(BASE, archivo), 'utf-8'));
+  const wf = JSON.parse(readFileSync(join(GENERADOS, archivo), 'utf-8'));
   const cuerpo = { name: wf.name, nodes: wf.nodes, connections: wf.connections, settings: wf.settings };
   const previo = existentes.find((w) => w.name === wf.name);
   try {

@@ -257,10 +257,11 @@ Backend (resumen; detalle en la [guía](docs/GUIA_CONFIGURACION.md)):
 │   └── types/                 tipos compartidos
 ├── public/images/             imágenes de los eventos
 ├── n8n/
-│   ├── WF01…WF10_*.json       workflows exportados
+│   ├── WF01…WF10_*.json       workflows descargados de n8n (entrega)
 │   ├── WF00_crear_google_sheets.json  workflow adicional: crea los 10 Google Sheets
 │   ├── generar_workflows.mjs  generador de los workflows (Node.js)
 │   ├── importar_workflows.mjs importa y activa workflows por la API de n8n
+│   ├── exportar_workflows.mjs descarga los workflows de n8n con los nombres de la entrega
 │   └── config.example.json    IDs de hojas y credenciales para el generador
 ├── docs/
 │   ├── GUIA_CONFIGURACION.md  configuración paso a paso

@@ -2,6 +2,15 @@
   "name": "WF02 - Autenticación y sesiones",
   "nodes": [
     {
+      "id": "324dd91e-7b31-4259-8767-f3ca8c9d2aaa",
+      "name": "Webhook",
+      "webhookId": "6fcb135b-cb4a-4c50-80ed-1ef49be9378c",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        180
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "ep/auth",
@@ -9,18 +18,21 @@
         "options": {
           "allowedOrigins": "*"
         }
-      },
-      "id": "f200c92c-30fd-456b-a7a5-0b7c62e9c3d6",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        0,
-        180
-      ],
-      "webhookId": "4f9a61ea-5996-95d6-34a6-6308a0aed564"
+      }
     },
     {
+      "id": "3989b7fc-ea68-4266-9e3b-4aa297a50dfa",
+      "name": "Leer Usuarios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        240,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -35,18 +47,6 @@
         },
         "options": {}
       },
-      "id": "2f2f5f26-771e-43f9-967f-1a8784b0329a",
-      "name": "Leer Usuarios",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        240,
-        180
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -55,6 +55,19 @@
       }
     },
     {
+      "id": "a43697be-1185-4c0f-94fd-a5499b790e91",
+      "name": "Leer Sesiones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        480,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -69,19 +82,6 @@
         },
         "options": {}
       },
-      "id": "e6a193bd-4055-42da-94de-36250c9ce6c6",
-      "name": "Leer Sesiones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        480,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -90,6 +90,19 @@
       }
     },
     {
+      "id": "da8c56ff-5c2a-4cb1-9108-7ae045357fde",
+      "name": "Leer Vinculaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        720,
+        180
+      ],
       "parameters": {
         "operation": "read",
         "documentId": {
@@ -104,19 +117,6 @@
         },
         "options": {}
       },
-      "id": "8135bc69-2bc2-4554-b34c-204f336db640",
-      "name": "Leer Vinculaciones",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        720,
-        180
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -125,19 +125,27 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Perfil público (sin hash ni salt) en el formato que espera el frontend.\nfunction perfil(u, vinculaciones) {\n  const v = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  return {\n    usuario_id: u.usuario_id, name: u.nombre, email: u.email_normalizado, phone: u.telefono || '',\n    city: u.ciudad || '', organization: u.organizacion || '', estado: u.estado,\n    telegramLinked: Boolean(v), telegramUsername: v ? v.telegram_username : undefined,\n    notificationEmail: u.notif_email !== 'NO', notificationTelegram: u.notif_telegram !== 'NO'\n  };\n}\n\nconst crypto = require('crypto');\nconst HORAS_SESION = 8;\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst vinculaciones = rows('Leer Vinculaciones', 'usuario_id');\nconst COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst out = (route, status, payload, row) => [{ json: { route, status, body: payload, row } }];\nconst fail = (status, error) => out('responder', status, { success: false, error });\n\nif (action === 'login') {\n  const email = norm(body.email).toLowerCase();\n  const password = String(body.password ?? '');\n  const u = usuarios.find((x) => norm(x.email_normalizado).toLowerCase() === email);\n  if (!u || !password) return fail(401, 'Correo o contraseña incorrectos.');\n  // Verificación: se recalcula PBKDF2 con el salt guardado y se compara en tiempo constante\n  const calculado = crypto.pbkdf2Sync(password, String(u.password_salt), 100000, 32, 'sha256');\n  const guardado = Buffer.from(String(u.password_hash), 'hex');\n  if (guardado.length !== calculado.length || !crypto.timingSafeEqual(guardado, calculado)) {\n    return fail(401, 'Correo o contraseña incorrectos.');\n  }\n  if (u.estado !== 'ACTIVO') return fail(403, 'La cuenta está INACTIVA.');\n  const token = crypto.randomBytes(32).toString('hex');\n  const expira = new Date(Date.now() + HORAS_SESION * 3600 * 1000).toISOString();\n  const row = { session_id: genId('SES'), usuario_id: u.usuario_id, session_token: token, creada_en: ahora,\n    expira_en: expira, estado: 'ACTIVA', cerrada_en: '', ultima_validacion: ahora };\n  return out('crear_sesion', 200, { success: true, message: `Bienvenido, ${u.nombre}.`,\n    data: { token, expiresAt: expira, profile: perfil(u, vinculaciones) } }, row);\n}\n\nconst token = norm(body.session_token);\nconst s = sesiones.find((x) => norm(x.session_token) === token);\nif (!token || !s) return fail(401, 'Sesión no encontrada.');\nconst u = usuarios.find((x) => x.usuario_id === s.usuario_id);\nconst base = pick(s);\n\nif (action === 'logout') {\n  if (s.estado !== 'ACTIVA') return out('responder', 200, { success: true, message: 'La sesión ya estaba cerrada.' });\n  return out('actualizar_sesion', 200, { success: true, message: 'Sesión cerrada correctamente.' },\n    { ...base, estado: 'CERRADA', cerrada_en: ahora, ultima_validacion: ahora });\n}\n\nif (action === 'validate') {\n  if (s.estado !== 'ACTIVA') return fail(401, `La sesión está ${String(s.estado).toLowerCase()}.`);\n  if (new Date(s.expira_en) < new Date()) {\n    return out('actualizar_sesion', 401, { success: false, error: 'La sesión expiró. Inicia sesión nuevamente.' },\n      { ...base, estado: 'EXPIRADA', ultima_validacion: ahora });\n  }\n  if (!u || u.estado !== 'ACTIVO') {\n    return out('actualizar_sesion', 403, { success: false, error: 'El usuario está INACTIVO.' },\n      { ...base, estado: 'CERRADA', cerrada_en: ahora, ultima_validacion: ahora });\n  }\n  return out('actualizar_sesion', 200, { success: true, data: { expiresAt: s.expira_en, profile: perfil(u, vinculaciones) } },\n    { ...base, ultima_validacion: ahora });\n}\n\nreturn fail(400, 'Acción no soportada. Usa login, logout o validate.');\n"
-      },
-      "id": "b91f1392-59ba-48b6-a6c4-8a162b2cf0c6",
+      "id": "2385568b-ba67-46f6-b680-3c8c91752213",
       "name": "Verificar password y sesión",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         960,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Perfil público (sin hash ni salt) en el formato que espera el frontend.\nfunction perfil(u, vinculaciones) {\n  const v = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  return {\n    usuario_id: u.usuario_id, name: u.nombre, email: u.email_normalizado, phone: u.telefono || '',\n    city: u.ciudad || '', organization: u.organizacion || '', estado: u.estado,\n    telegramLinked: Boolean(v), telegramUsername: v ? v.telegram_username : undefined,\n    notificationEmail: u.notif_email !== 'NO', notificationTelegram: u.notif_telegram !== 'NO'\n  };\n}\n\nconst crypto = require('crypto');\nconst HORAS_SESION = 8;\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst vinculaciones = rows('Leer Vinculaciones', 'usuario_id');\nconst COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst out = (route, status, payload, row) => [{ json: { route, status, body: payload, row } }];\nconst fail = (status, error) => out('responder', status, { success: false, error });\n\nif (action === 'login') {\n  const email = norm(body.email).toLowerCase();\n  const password = String(body.password ?? '');\n  const u = usuarios.find((x) => norm(x.email_normalizado).toLowerCase() === email);\n  if (!u || !password) return fail(401, 'Correo o contraseña incorrectos.');\n  // Verificación: se recalcula PBKDF2 con el salt guardado y se compara en tiempo constante\n  const calculado = crypto.pbkdf2Sync(password, String(u.password_salt), 100000, 32, 'sha256');\n  const guardado = Buffer.from(String(u.password_hash), 'hex');\n  if (guardado.length !== calculado.length || !crypto.timingSafeEqual(guardado, calculado)) {\n    return fail(401, 'Correo o contraseña incorrectos.');\n  }\n  if (u.estado !== 'ACTIVO') return fail(403, 'La cuenta está INACTIVA.');\n  const token = crypto.randomBytes(32).toString('hex');\n  const expira = new Date(Date.now() + HORAS_SESION * 3600 * 1000).toISOString();\n  const row = { session_id: genId('SES'), usuario_id: u.usuario_id, session_token: token, creada_en: ahora,\n    expira_en: expira, estado: 'ACTIVA', cerrada_en: '', ultima_validacion: ahora };\n  return out('crear_sesion', 200, { success: true, message: `Bienvenido, ${u.nombre}.`,\n    data: { token, expiresAt: expira, profile: perfil(u, vinculaciones) } }, row);\n}\n\nconst token = norm(body.session_token);\nconst s = sesiones.find((x) => norm(x.session_token) === token);\nif (!token || !s) return fail(401, 'Sesión no encontrada.');\nconst u = usuarios.find((x) => x.usuario_id === s.usuario_id);\nconst base = pick(s);\n\nif (action === 'logout') {\n  if (s.estado !== 'ACTIVA') return out('responder', 200, { success: true, message: 'La sesión ya estaba cerrada.' });\n  return out('actualizar_sesion', 200, { success: true, message: 'Sesión cerrada correctamente.' },\n    { ...base, estado: 'CERRADA', cerrada_en: ahora, ultima_validacion: ahora });\n}\n\nif (action === 'validate') {\n  if (s.estado !== 'ACTIVA') return fail(401, `La sesión está ${String(s.estado).toLowerCase()}.`);\n  if (new Date(s.expira_en) < new Date()) {\n    return out('actualizar_sesion', 401, { success: false, error: 'La sesión expiró. Inicia sesión nuevamente.' },\n      { ...base, estado: 'EXPIRADA', ultima_validacion: ahora });\n  }\n  if (!u || u.estado !== 'ACTIVO') {\n    return out('actualizar_sesion', 403, { success: false, error: 'El usuario está INACTIVO.' },\n      { ...base, estado: 'CERRADA', cerrada_en: ahora, ultima_validacion: ahora });\n  }\n  return out('actualizar_sesion', 200, { success: true, data: { expiresAt: s.expira_en, profile: perfil(u, vinculaciones) } },\n    { ...base, ultima_validacion: ahora });\n}\n\nreturn fail(400, 'Acción no soportada. Usa login, logout o validate.');\n"
+      }
     },
     {
+      "id": "2d9b6478-b4fe-4fce-988e-c32c0bfece2c",
+      "name": "Resultado de autenticación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        180
+      ],
       "parameters": {
         "rules": {
           "values": [
@@ -150,7 +158,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "b6900340-13ba-4640-a1c9-3e58d22bf8cf",
+                    "id": "a74a279e-fe6a-422e-9453-06470c511c92",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "crear_sesion",
                     "operator": {
@@ -173,7 +181,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "e30ecf60-a978-45c3-a59c-84c6b5dd2cb4",
+                    "id": "b77a0617-81ee-4f4f-a0ab-3803a8ff0391",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "actualizar_sesion",
                     "operator": {
@@ -193,30 +201,33 @@
           "fallbackOutput": "extra",
           "renameFallbackOutput": "otro"
         }
-      },
-      "id": "18e3f249-a674-417e-b2f3-ae6f57248b8e",
-      "name": "Resultado de autenticación",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [
-        1200,
-        180
-      ]
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Verificar password y sesión').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "5fbf4304-ff75-427c-a05f-971e66d5b4c9",
+      "id": "fa032bce-696d-4cb1-9623-35e860e29611",
       "name": "Fila: Registrar sesión",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
         0
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Verificar password y sesión').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "b6453852-d61b-4bd3-9124-0161d72e0cf6",
+      "name": "Registrar sesión",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1680,
+        0
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -312,17 +323,6 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "54113f71-339d-408f-9427-e67f3e4fac77",
-      "name": "Registrar sesión",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1680,
-        0
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -331,19 +331,30 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Verificar password y sesión').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
-      },
-      "id": "77abbeb6-e25e-4bc1-98c3-52e86e26932c",
+      "id": "cb59c973-eda1-4935-b7ce-24183020e29d",
       "name": "Fila: Actualizar sesión",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1440,
         180
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const COLS = [\"session_id\",\"usuario_id\",\"session_token\",\"creada_en\",\"expira_en\",\"estado\",\"cerrada_en\",\"ultima_validacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst data = $('Verificar password y sesión').first().json.row;\nreturn (Array.isArray(data) ? data : [data]).map((r) => ({ json: pick(r) }));\n"
+      }
     },
     {
+      "id": "c75fcda8-1b53-40ff-9041-66819095659d",
+      "name": "Actualizar sesión",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "position": [
+        1680,
+        180
+      ],
       "parameters": {
         "operation": "update",
         "documentId": {
@@ -442,17 +453,6 @@
         },
         "columnToMatchOn": "session_id"
       },
-      "id": "aa553799-59e8-42e9-84df-3f5ad7d9526c",
-      "name": "Actualizar sesión",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1680,
-        180
-      ],
-      "retryOnFail": true,
-      "maxTries": 5,
-      "waitBetweenTries": 5000,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ANlXgYw1OzinSzi4",
@@ -461,23 +461,24 @@
       }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($('Verificar password y sesión').first().json.body) }}",
-        "options": {
-          "responseCode": "={{ $('Verificar password y sesión').first().json.status }}"
-        }
-      },
-      "id": "ab3a6e8f-aa4b-4ff4-bbfe-eb18bf82c0f0",
+      "id": "48861577-22f9-48a6-8def-2f9b4156085e",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
         1920,
         180
-      ]
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Verificar password y sesión').first().json.body) }}",
+        "options": {
+          "responseCode": "={{ $('Verificar password y sesión').first().json.status }}"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
     "Fila: Registrar sesión": {
       "main": [
@@ -604,13 +605,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "America/Bogota"
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
   },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
-  }
+  "versionId": "6b2bcf3f-080f-49aa-ba2f-15f89e12991d",
+  "meta": {},
+  "id": "fWdFJk114L4TIVBp",
+  "tags": []
 }
