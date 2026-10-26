@@ -1,7 +1,7 @@
 # EventPass 🎟️
 
 **Estudiante:** Mariangel Jaimes
-**Aplicación pública (Vercel):** _[Pega aquí la URL de Vercel]_
+**Aplicación pública (Vercel):** https://eventpass-tawny.vercel.app
 
 EventPass es una plataforma web para descubrir eventos, inscribirse, gestionar cupos y listas de espera, y recibir notificaciones por **Gmail** y **Telegram**. El frontend en React solo actúa como cliente: toda la lógica de negocio vive en **10 workflows de n8n** y la persistencia en **10 archivos de Google Sheets**. Incluye un asistente conversacional con **Google Gemini**.
 

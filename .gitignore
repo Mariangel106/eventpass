@@ -9,3 +9,4 @@ coverage/
 
 # Configuración personal del generador (IDs de tus hojas y credenciales)
 n8n/config.json
+.vercel
