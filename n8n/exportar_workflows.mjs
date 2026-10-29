@@ -27,7 +27,8 @@ const ARCHIVOS = {
   WF07: 'WF07_reasignacion_lista_espera.json',
   WF08: 'WF08_recordatorios.json',
   WF09: 'WF09_notificaciones.json',
-  WF10: 'WF10_eventpass_assistant.json'
+  WF10: 'WF10_eventpass_assistant.json',
+  WF11: 'WF11_checkin_digital.json'
 };
 
 async function api(path) {

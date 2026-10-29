@@ -1,4 +1,4 @@
-import { ApiResponse, EventItem, Registration, UserProfile } from '../types';
+import { ApiResponse, CheckinResult, EventItem, Registration, UserProfile } from '../types';
 import { INITIAL_EVENTS, INITIAL_REGISTRATIONS, INITIAL_USER_PROFILE } from '../data/mockEvents';
 
 /**
@@ -10,6 +10,7 @@ import { INITIAL_EVENTS, INITIAL_REGISTRATIONS, INITIAL_USER_PROFILE } from '../
  *   WF03 POST  {VITE_N8N_BASE_URL}/ep/telegram       action: code | status | unlink
  *   WF05 GET   {VITE_N8N_BASE_URL}/ep/catalogo       ?evento_id= &categoria= &visitor_id=
  *   WF06 POST  {VITE_N8N_BASE_URL}/ep/inscripciones  action: create | list | update | cancel
+ *   WF11 POST  {VITE_N8N_BASE_URL}/ep/checkin        inscripcion_id, evento_id
  *   WF10 POST  {VITE_N8N_CHAT_URL}                   Chat Trigger (sendMessage)
  *
  * Si VITE_N8N_BASE_URL no está configurada, opera en Modo Demostración con localStorage.
@@ -22,7 +23,8 @@ const LOCAL_STORAGE_KEYS = {
   IS_LOGGED_IN: 'eventpass_demo_is_logged_in',
   SESSION_TOKEN: 'eventpass_session_token',
   SESSION_PROFILE: 'eventpass_session_profile',
-  VISITOR_ID: 'eventpass_visitor_id'
+  VISITOR_ID: 'eventpass_visitor_id',
+  CHECKINS: 'eventpass_demo_checkins'
 };
 
 const GUEST_PROFILE: UserProfile = {
@@ -323,6 +325,10 @@ class N8nApiClient {
       return { success: false, isMock: true, error: 'Esta inscripción ya se encuentra cancelada.' };
     }
 
+    if (target.status === 'ASISTIO') {
+      return { success: false, isMock: true, error: 'No se puede cancelar: ya registraste tu ingreso al evento.' };
+    }
+
     const wasConfirmed = target.status === 'CONFIRMADA';
     target.status = 'CANCELADA';
     target.cancellationReason = payload.reason || 'Cancelada a petición del usuario';
@@ -379,6 +385,64 @@ class N8nApiClient {
       data: this.getStoredRegistrations().filter((r) => r.userEmail.toLowerCase() === email),
       isMock: true
     };
+  }
+
+  // ============================================================
+  // WF11: Check-in digital (POST /ep/checkin)
+  // ============================================================
+  /** Registra el ingreso de una inscripción. `data.resultado` distingue EXITOSO, DUPLICADO y RECHAZADO. */
+  public async checkIn(payload: { inscripcionId: string; eventoId: string }): Promise<ApiResponse<CheckinResult>> {
+    if (this.isConnected()) {
+      return this.call<CheckinResult>('ep/checkin', {
+        inscripcion_id: payload.inscripcionId.trim(),
+        evento_id: payload.eventoId.trim()
+      });
+    }
+
+    // Modo Demostración: mismas validaciones que el WF11, sobre los datos locales
+    const inscripcionId = payload.inscripcionId.trim().toUpperCase();
+    const eventoId = payload.eventoId.trim().toUpperCase();
+    const regs = this.getStoredRegistrations();
+    const reg = regs.find((r) => r.id.toUpperCase() === inscripcionId);
+    const event = this.getStoredEvents().find((e) => e.id.toUpperCase() === eventoId);
+    const checkins: CheckinResult[] = JSON.parse(readStorage(LOCAL_STORAGE_KEYS.CHECKINS) || '[]');
+    const result = (resultado: CheckinResult['resultado'], detalle: string): CheckinResult => ({
+      resultado,
+      checkin_id: `CHK-${Date.now().toString(36).toUpperCase()}`,
+      inscripcion_id: inscripcionId,
+      evento_id: eventoId,
+      usuario_id: reg?.userEmail || '',
+      asistente: reg?.userName || '',
+      evento_nombre: event?.title || '',
+      fecha_checkin: new Date().toISOString(),
+      estado_inscripcion: reg?.status || '',
+      detalle
+    });
+    const reject = (resultado: 'RECHAZADO' | 'DUPLICADO', detalle: string): ApiResponse<CheckinResult> => ({
+      success: false,
+      isMock: true,
+      data: result(resultado, detalle),
+      error: detalle
+    });
+
+    if (!inscripcionId || !eventoId) return reject('RECHAZADO', 'Debes enviar inscripcion_id y evento_id.');
+    if (!reg) return reject('RECHAZADO', `La inscripción ${inscripcionId} no existe.`);
+    if (!event) return reject('RECHAZADO', `El evento ${eventoId} no existe.`);
+    if (reg.eventId.toUpperCase() !== eventoId) {
+      return reject('RECHAZADO', `La inscripción ${inscripcionId} pertenece al evento ${reg.eventId}, no a ${eventoId}.`);
+    }
+    if (reg.status === 'ASISTIO' || checkins.some((c) => c.inscripcion_id === inscripcionId)) {
+      return reject('DUPLICADO', 'El ingreso ya había sido registrado.');
+    }
+    if (reg.status !== 'CONFIRMADA') {
+      return reject('RECHAZADO', `La inscripción está en estado ${reg.status}: no permite el ingreso.`);
+    }
+
+    reg.status = 'ASISTIO';
+    this.saveStoredRegistrations(regs);
+    const ok = { ...result('EXITOSO', 'Ingreso registrado: CONFIRMADA → ASISTIO'), estado_inscripcion: 'ASISTIO' };
+    writeStorage(LOCAL_STORAGE_KEYS.CHECKINS, JSON.stringify([...checkins, ok]));
+    return { success: true, isMock: true, data: ok, message: 'Check-in realizado correctamente (Modo Demostración).' };
   }
 
   // ============================================================
@@ -638,6 +702,7 @@ class N8nApiClient {
     if (typeof window === 'undefined') return;
     writeStorage(LOCAL_STORAGE_KEYS.EVENTS, null);
     writeStorage(LOCAL_STORAGE_KEYS.REGISTRATIONS, null);
+    writeStorage(LOCAL_STORAGE_KEYS.CHECKINS, null);
     writeStorage(LOCAL_STORAGE_KEYS.PROFILE, null);
     this.initializeLocalStorage();
   }

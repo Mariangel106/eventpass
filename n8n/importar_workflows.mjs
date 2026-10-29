@@ -5,7 +5,7 @@
  * Lee los archivos de n8n/generados/ (salida de generar_workflows.mjs).
  *
  * Uso:
- *   node n8n/importar_workflows.mjs                      # importa WF01..WF10
+ *   node n8n/importar_workflows.mjs                      # importa WF01..WF11
  *   node n8n/importar_workflows.mjs WF00_crear_google_sheets.json
  *   node n8n/importar_workflows.mjs --sin-activar WF09_notificaciones.json
  *
@@ -29,7 +29,7 @@ const args = process.argv.slice(2);
 const activar = !args.includes('--sin-activar');
 const archivos = args.filter((a) => !a.startsWith('--'));
 const GENERADOS = join(BASE, 'generados');
-const lista = archivos.length ? archivos : readdirSync(GENERADOS).filter((f) => /^WF(0[1-9]|10)_.*\.json$/.test(f)).sort();
+const lista = archivos.length ? archivos : readdirSync(GENERADOS).filter((f) => /^WF(0[1-9]|1[01])_.*\.json$/.test(f)).sort();
 
 async function api(method, path, body) {
   const res = await fetch(`${N8N_URL}/api/v1${path}`, {

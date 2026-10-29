@@ -63,6 +63,12 @@ export const MyRegistrations: React.FC<MyRegistrationsProps> = ({
       badgeClass: 'text-rose-400 font-semibold',
       icon: <XCircle className="w-4 h-4 text-rose-400" />,
       desc: 'Inscripción cancelada. Cupo liberado.'
+    },
+    ASISTIO: {
+      label: 'ASISTIÓ',
+      badgeClass: 'text-cyan-400 font-semibold',
+      icon: <CheckCircle2 className="w-4 h-4 text-cyan-400" />,
+      desc: 'Ingreso registrado con check-in en el acceso.'
     }
   };
 
@@ -243,7 +249,7 @@ export const MyRegistrations: React.FC<MyRegistrationsProps> = ({
                     </button>
                   )}
 
-                  {reg.status !== 'CANCELADA' && (
+                  {reg.status !== 'CANCELADA' && reg.status !== 'ASISTIO' && (
                     <button
                       onClick={() => onRequestCancel(reg)}
                       className="py-2.5 px-3 rounded-xl border border-rose-500/30 text-rose-300 hover:bg-rose-950/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"

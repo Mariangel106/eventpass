@@ -35,6 +35,11 @@ export const DigitalTicketModal: React.FC<DigitalTicketModalProps> = ({
       text: 'INSCRIPCIÓN CANCELADA',
       bg: 'bg-rose-950/80 border-rose-500/40 text-rose-300',
       icon: <XCircle className="w-4 h-4 text-rose-400" />
+    },
+    ASISTIO: {
+      text: 'INGRESO REGISTRADO',
+      bg: 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300',
+      icon: <CheckCircle2 className="w-4 h-4 text-cyan-400" />
     }
   };
 

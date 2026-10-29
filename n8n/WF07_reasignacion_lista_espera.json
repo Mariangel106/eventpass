@@ -2,7 +2,7 @@
   "name": "WF07 - Reasignación de lista de espera",
   "nodes": [
     {
-      "id": "2af7ca36-57f9-4cb6-bf2e-ebddcb5e267a",
+      "id": "21f6d3ac-c518-456a-b4fa-d1e47c9c190d",
       "name": "Cada 5 minutos",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "cec806ed-d247-4e73-b765-4bf33c78fc1f",
+      "id": "249d17ba-932c-49ec-9347-aced0397c7dd",
       "name": "Leer Eventos",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -56,7 +56,7 @@
       }
     },
     {
-      "id": "cf4cdbd3-a136-4d21-b8b8-fde33d0c3483",
+      "id": "cb0c90db-fb0c-478f-9bc3-9ed3098606a7",
       "name": "Leer Inscripciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -91,7 +91,7 @@
       }
     },
     {
-      "id": "f8f32c96-9017-4d4d-ac0e-dea33871a811",
+      "id": "2a538957-6f69-466e-b29e-3fdde76c8496",
       "name": "Calcular cupos y ordenar lista",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -100,11 +100,11 @@
         180
       ],
       "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\n// Filter: solo eventos PUBLICADOS que aún no ocurren\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO')\n  .filter((e) => { const d = inicioEvento(e); return !d.isValid || d > DateTime.now(); });\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst salida = [];\nfor (const e of eventos) {\n  const delEvento = insc.filter((i) => i.evento_id === e.evento_id);\n  const confirmadas = delEvento.filter((i) => i.estado === 'CONFIRMADA').length;\n  const libres = (Number(e.capacidad) || 0) - confirmadas;\n  if (libres <= 0) continue;\n  // Prioridad: fecha_inscripcion ASC (quien más tiempo lleva esperando)\n  const espera = delEvento.filter((i) => i.estado === 'LISTA_ESPERA')\n    .sort((a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion)));\n  espera.slice(0, libres).forEach((i, idx) => {\n    salida.push({ json: {\n      inscripcion: { ...pick(i), estado: 'CONFIRMADA', orden_espera: '', fecha_actualizacion: ahora },\n      reasignacion: { reasignacion_id: genId('REA'), evento_id: e.evento_id, inscripcion_id: i.inscripcion_id,\n        usuario_id: i.usuario_id, fecha: ahora, orden_lista: String(idx + 1), estado_anterior: 'LISTA_ESPERA',\n        estado_nuevo: 'CONFIRMADA', resultado_notificacion: 'PENDIENTE' },\n      notif: { usuario_id: i.usuario_id, tipo: 'REASIGNACION_CUPO', titulo: `¡Se liberó un cupo! ${e.nombre}`,\n        mensaje: `Buenas noticias: se liberó un cupo en \"${e.nombre}\" y tu inscripción ${i.inscripcion_id} pasó de LISTA DE ESPERA a CONFIRMADA.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: `REASIGNACION|${i.inscripcion_id}` }\n    } });\n  });\n}\nreturn salida;\n"
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\n// Filter: solo eventos PUBLICADOS que aún no ocurren\nconst eventos = rows('Leer Eventos', 'evento_id').filter((e) => e.estado === 'PUBLICADO')\n  .filter((e) => { const d = inicioEvento(e); return !d.isValid || d > DateTime.now(); });\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst salida = [];\nfor (const e of eventos) {\n  const delEvento = insc.filter((i) => i.evento_id === e.evento_id);\n  const confirmadas = delEvento.filter((i) => [\"CONFIRMADA\",\"ASISTIO\"].includes(i.estado)).length;\n  const libres = (Number(e.capacidad) || 0) - confirmadas;\n  if (libres <= 0) continue;\n  // Prioridad: fecha_inscripcion ASC (quien más tiempo lleva esperando)\n  const espera = delEvento.filter((i) => i.estado === 'LISTA_ESPERA')\n    .sort((a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion)));\n  espera.slice(0, libres).forEach((i, idx) => {\n    salida.push({ json: {\n      inscripcion: { ...pick(i), estado: 'CONFIRMADA', orden_espera: '', fecha_actualizacion: ahora },\n      reasignacion: { reasignacion_id: genId('REA'), evento_id: e.evento_id, inscripcion_id: i.inscripcion_id,\n        usuario_id: i.usuario_id, fecha: ahora, orden_lista: String(idx + 1), estado_anterior: 'LISTA_ESPERA',\n        estado_nuevo: 'CONFIRMADA', resultado_notificacion: 'PENDIENTE' },\n      notif: { usuario_id: i.usuario_id, tipo: 'REASIGNACION_CUPO', titulo: `¡Se liberó un cupo! ${e.nombre}`,\n        mensaje: `Buenas noticias: se liberó un cupo en \"${e.nombre}\" y tu inscripción ${i.inscripcion_id} pasó de LISTA DE ESPERA a CONFIRMADA.\\nFecha: ${fechaLegible(e)} ${e.hora}\\nLugar: ${e.lugar}`,\n        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: `REASIGNACION|${i.inscripcion_id}` }\n    } });\n  });\n}\nreturn salida;\n"
       }
     },
     {
-      "id": "ce8e0aff-7818-4dcb-9633-437f21ad7774",
+      "id": "6e47aab4-7196-4cc7-ad16-7564963e77ad",
       "name": "Fila: Promover inscripción",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -117,7 +117,7 @@
       }
     },
     {
-      "id": "c59aa80d-9b9a-4058-b762-9dd32b34ae34",
+      "id": "55b40ce5-c7eb-4d2b-9d82-c81adb9d62d0",
       "name": "Promover inscripción",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -261,7 +261,7 @@
       }
     },
     {
-      "id": "f88ebbd9-c43e-476c-8387-32453779a443",
+      "id": "2dbcaa39-60e1-425b-b629-a8a11d138a7e",
       "name": "Datos de notificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -274,7 +274,7 @@
       }
     },
     {
-      "id": "88f6bfca-fb7c-4de4-86d3-45ae4097e77b",
+      "id": "3ad17153-ea62-4819-bac3-786b094c9c77",
       "name": "Notificar (WF09)",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -295,7 +295,7 @@
       }
     },
     {
-      "id": "f906070c-e1bf-452b-aba8-0d43f9f2ef9f",
+      "id": "f4af6c6e-f634-4749-a5f4-f4f2967841ce",
       "name": "Fila: Registrar reasignación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -308,7 +308,7 @@
       }
     },
     {
-      "id": "97f1e6c9-3b04-467e-8d54-4229f1366b90",
+      "id": "70e76453-93a5-4139-9c10-4f433c6e6b22",
       "name": "Registrar reasignación",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -431,7 +431,7 @@
       }
     },
     {
-      "id": "3fa7a600-9e87-43c8-a732-eb78bbafaf7d",
+      "id": "c354331c-0cbe-45d9-868b-a126b781de5c",
       "name": "Fila: Auditoría inscripciones",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -444,7 +444,7 @@
       }
     },
     {
-      "id": "4a96077d-6a4b-42bf-994f-f88e0e0de9f7",
+      "id": "3b132461-8ee6-45c6-9a3d-8689244fe1d3",
       "name": "Auditoría inscripciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -705,7 +705,7 @@
     "timezone": "America/Bogota",
     "executionOrder": "v1"
   },
-  "versionId": "fe7a0092-b9a2-448c-8a5b-c781b7b98c63",
+  "versionId": "fd40245c-d0d7-4d4a-959e-99a2e77f6b17",
   "meta": {},
   "id": "6JZlkK6SKykWgoyD",
   "tags": []

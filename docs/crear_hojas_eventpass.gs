@@ -1,5 +1,5 @@
 /**
- * EventPass - Crea los 10 archivos de Google Sheets (EP01 a EP10) con sus hojas, columnas
+ * EventPass - Crea los 11 archivos de Google Sheets (EP01 a EP11) con sus hojas, columnas
  * y datos de prueba.
  *
  * Cómo usarlo:
@@ -57,6 +57,9 @@ const ESTRUCTURA = {
   EP10_Soporte: {
     Conversaciones: ['conversation_id', 'usuario_id', 'visitor_id', 'fecha_inicio', 'fecha_ultima_interaccion', 'estado'],
     Mensajes: ['message_id', 'conversation_id', 'usuario_id', 'visitor_id', 'rol', 'mensaje', 'timestamp']
+  },
+  EP11_Checkin: {
+    Checkins: ['checkin_id', 'inscripcion_id', 'evento_id', 'usuario_id', 'fecha_checkin', 'resultado', 'detalle']
   }
 };
 

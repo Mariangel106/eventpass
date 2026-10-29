@@ -2,7 +2,9 @@ export type EventCategory = 'Tecnología' | 'Educación' | 'Cultura' | 'Deportes
 
 export type EventStatus = 'DISPONIBLE' | 'AGOTADO' | 'PROXIMO' | 'CANCELADO' | 'CERRADO';
 
-export type RegistrationStatus = 'CONFIRMADA' | 'LISTA_ESPERA' | 'CANCELADA';
+export type RegistrationStatus = 'CONFIRMADA' | 'LISTA_ESPERA' | 'CANCELADA' | 'ASISTIO';
+
+export type CheckinResultado = 'EXITOSO' | 'RECHAZADO' | 'DUPLICADO';
 
 export interface EventItem {
   id: string;
@@ -49,6 +51,19 @@ export interface Registration {
   notes?: string;
   cancellationReason?: string;
   qrPayload: string;
+}
+
+export interface CheckinResult {
+  resultado: CheckinResultado;
+  checkin_id: string;
+  inscripcion_id: string;
+  evento_id: string;
+  usuario_id: string;
+  asistente: string;
+  evento_nombre: string;
+  fecha_checkin: string;
+  estado_inscripcion: string;
+  detalle: string;
 }
 
 export interface UserProfile {

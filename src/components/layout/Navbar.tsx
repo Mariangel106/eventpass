@@ -3,8 +3,8 @@ import { CalendarDays, Menu, X, Send, Sparkles, User, LogOut, Network } from 'lu
 import { UserProfile } from '../../types';
 
 interface NavbarProps {
-  currentTab: 'inicio' | 'catalogo' | 'inscripciones' | 'perfil';
-  onNavigate: (tab: 'inicio' | 'catalogo' | 'inscripciones' | 'perfil') => void;
+  currentTab: 'inicio' | 'catalogo' | 'inscripciones' | 'checkin' | 'perfil';
+  onNavigate: (tab: 'inicio' | 'catalogo' | 'inscripciones' | 'checkin' | 'perfil') => void;
   user: UserProfile;
   isLoggedIn: boolean;
   onOpenAuth: () => void;
@@ -32,10 +32,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'inicio' as const, label: 'Inicio' },
     { id: 'catalogo' as const, label: 'Catálogo' },
     { id: 'inscripciones' as const, label: 'Mis Inscripciones' },
+    { id: 'checkin' as const, label: 'Check-in' },
     { id: 'perfil' as const, label: 'Perfil' }
   ];
 
-  const handleMobileNav = (tab: 'inicio' | 'catalogo' | 'inscripciones' | 'perfil') => {
+  const handleMobileNav = (tab: 'inicio' | 'catalogo' | 'inscripciones' | 'checkin' | 'perfil') => {
     onNavigate(tab);
     setMobileMenuOpen(false);
   };
@@ -49,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="font-semibold text-cyan-400">EventPass Demo</span>
             <span className="text-slate-500 hidden sm:inline">·</span>
             <span className="text-slate-400 hidden sm:inline truncate">
-              Arquitectura lista para conectar 10 workflows en n8n & Google Sheets
+              Arquitectura lista para conectar 11 workflows en n8n & Google Sheets
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">

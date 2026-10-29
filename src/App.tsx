@@ -13,6 +13,7 @@ import { TelegramLinkingModal } from './components/telegram/TelegramLinkingModal
 import { SupportAssistant } from './components/support/SupportAssistant';
 import { AuthModal } from './components/auth/AuthModal';
 import { UserProfileView } from './components/profile/UserProfileView';
+import { CheckinView } from './components/checkin/CheckinView';
 import { N8nConfigModal } from './components/common/N8nConfigModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { n8nApi } from './services/n8nClient';
@@ -61,7 +62,7 @@ const CatalogStatus: React.FC<{ loading: boolean; error: string | null; onRetry:
 
 export default function App() {
   // Navigation
-  const [currentTab, setCurrentTab] = useState<'inicio' | 'catalogo' | 'inscripciones' | 'perfil'>('inicio');
+  const [currentTab, setCurrentTab] = useState<'inicio' | 'catalogo' | 'inscripciones' | 'checkin' | 'perfil'>('inicio');
 
   // Application Data States
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -201,6 +202,21 @@ export default function App() {
       setIsLoggedIn(false);
       setUser(n8nApi.getProfile());
     }
+  };
+
+  const handleCheckIn = async (inscripcionId: string, eventoId: string) => {
+    const res = await n8nApi.checkIn({ inscripcionId, eventoId });
+    const resultado = res.data?.resultado;
+    if (res.success) {
+      addToast('success', 'Check-in realizado', res.message || 'Check-in realizado correctamente.');
+      // Si la inscripción es del usuario actual, se refleja el nuevo estado ASISTIO
+      if (isLoggedIn) await loadData();
+    } else if (resultado === 'DUPLICADO') {
+      addToast('info', 'Ingreso ya registrado', res.error);
+    } else {
+      addToast('error', resultado === 'RECHAZADO' ? 'Check-in rechazado' : 'Error en el check-in', res.error);
+    }
+    return res;
   };
 
   const handleRequestTelegramCode = async () => {
@@ -422,7 +438,7 @@ export default function App() {
                           onClick={() => setN8nModalOpen(true)}
                           className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors shadow-md"
                         >
-                          Explorar los 10 Workflows
+                          Explorar los 11 Workflows
                         </button>
                         <button
                           onClick={() => setTelegramModalOpen(true)}
@@ -507,6 +523,8 @@ export default function App() {
             isTelegramLinked={user.telegramLinked}
           />
         )}
+
+        {currentTab === 'checkin' && <CheckinView events={events} onCheckIn={handleCheckIn} />}
 
         {currentTab === 'perfil' && isLoggedIn && (
           <UserProfileView

@@ -2,7 +2,7 @@
   "name": "WF10 - EventPass Assistant",
   "nodes": [
     {
-      "id": "36c5dede-cda4-423f-8e54-3726b26fc6d4",
+      "id": "39bde335-33a5-4a15-96bb-c4da02a85f90",
       "name": "Chat Trigger",
       "webhookId": "2715f76e-c609-5fad-3b13-2c00bdaf3be2",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
@@ -21,7 +21,7 @@
       }
     },
     {
-      "id": "fc9e26a6-795d-4b21-b15e-108d6f2b6561",
+      "id": "78dc8c76-5409-4846-9a01-025618f1beda",
       "name": "Leer Eventos (solo lectura)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -56,7 +56,7 @@
       }
     },
     {
-      "id": "2ac10581-5c7e-414e-a7f8-b0b0ce632123",
+      "id": "c6b0b094-6935-4af2-9668-43ea673f7b27",
       "name": "Leer Inscripciones (solo lectura)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -91,7 +91,7 @@
       }
     },
     {
-      "id": "0fc58aa3-ab57-44d4-bff0-c1ec43173c09",
+      "id": "a14cb99f-d149-4a06-9cdc-5dac706a8471",
       "name": "Leer Conversaciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -126,7 +126,7 @@
       }
     },
     {
-      "id": "c2c44e8d-1d07-4c1b-9768-91f1df0c9146",
+      "id": "a0a34ab4-459d-4eff-b7ce-5ea7c88b8c60",
       "name": "Leer Mensajes",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -161,7 +161,7 @@
       }
     },
     {
-      "id": "e5df3496-5f1a-49d1-877c-5e8bce39cabc",
+      "id": "9e4ad2cb-654c-4843-9f70-9ceb54aa25a9",
       "name": "Preparar contexto",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -170,11 +170,11 @@
         180
       ],
       "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Cupos = capacidad - inscripciones CONFIRMADAS (nunca un valor manual)\nfunction conteos(inscripciones) {\n  const c = {}, w = {};\n  for (const i of inscripciones) {\n    if (i.estado === 'CONFIRMADA') c[i.evento_id] = (c[i.evento_id] || 0) + 1;\n    if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;\n  }\n  return { confirmadas: c, espera: w };\n}\nfunction eventoFront(e, cnt) {\n  const capacidad = Number(e.capacidad) || 0;\n  const confirmadas = cnt.confirmadas[e.evento_id] || 0;\n  const libres = Math.max(0, capacidad - confirmadas);\n  const inicio = inicioEvento(e);\n  const dias = inicio.isValid ? Math.ceil(inicio.diff(DateTime.now(), 'days').days) : null;\n  const finalizado = inicio.isValid && inicio < DateTime.now();\n  let status;\n  if (e.estado === 'CANCELADO') status = 'CANCELADO';\n  else if (e.estado === 'CERRADO' || finalizado) status = 'CERRADO';\n  else if (libres === 0) status = 'AGOTADO';\n  else if (dias !== null && dias <= 7) status = 'PROXIMO';\n  else status = 'DISPONIBLE';\n  const desc = norm(e.descripcion);\n  return {\n    id: e.evento_id, slug: e.evento_id, title: e.nombre, category: e.categoria,\n    shortDescription: desc.length > 150 ? desc.slice(0, 147) + '...' : desc, description: desc,\n    date: fechaLegible(e), isoDate: norm(e.fecha), time: norm(e.hora), location: e.lugar, venueType: 'Presencial',\n    organizer: e.organizador, totalCapacity: capacidad, registeredCount: confirmadas, availableSpots: libres,\n    waitlistCount: cnt.espera[e.evento_id] || 0, daysUntil: dias, status,\n    cancellationReason: e.estado === 'CANCELADO' ? 'Evento cancelado por el organizador.'\n      : status === 'CERRADO' ? 'Inscripciones cerradas.' : undefined,\n    imageUrl: e.imagen_url, tags: [e.categoria], priceText: 'Entrada gratuita con inscripción previa'\n  };\n}\n\nconst c = $('Chat Trigger').first().json;\n    const meta = c.metadata || {};\n    const pregunta = norm(c.chatInput);\n    const sessionId = norm(c.sessionId) || genId('SESS');\n    // conversation_id derivado del sessionId del chat: misma ventana de chat = misma conversación\n    const conversation_id = `CONV-${sessionId}`;\n    const usuario_id = norm(meta.usuario_id);\n    const visitor_id = norm(meta.visitor_id) || sessionId;\n    const previa = rows('Leer Conversaciones', 'conversation_id').find((x) => x.conversation_id === conversation_id);\n    const historial = rows('Leer Mensajes', 'message_id').filter((m) => m.conversation_id === conversation_id)\n      .sort((a, b) => norm(a.timestamp).localeCompare(norm(b.timestamp))).slice(-10)\n      .map((m) => `${m.rol === 'USER' ? 'Usuario' : 'Asistente'}: ${m.mensaje}`).join('\\n');\n    const cnt = conteos(rows('Leer Inscripciones (solo lectura)', 'inscripcion_id'));\n    const catalogo = rows('Leer Eventos (solo lectura)', 'evento_id').filter((e) => e.estado !== 'BORRADOR')\n      .map((e) => eventoFront(e, cnt))\n      .map((e) => `- ${e.title} | Categoría: ${e.category} | Fecha: ${e.date} ${e.time} | Lugar: ${e.location} | Estado: ${e.status} | Cupos libres: ${e.availableSpots}/${e.totalCapacity} | En espera: ${e.waitlistCount}`)\n      .join('\\n');\n\n    const prompt = `Eres \"EventPass Assistant\", el asistente de soporte de la plataforma EventPass.\nResponde SIEMPRE en español, de forma breve, amable y precisa.\nEscribe en texto plano: sin Markdown, sin asteriscos ni almohadillas. Para listas usa guiones simples.\n\nREGLAS ESTRICTAS (eres solo informativo):\n- NO puedes crear usuarios, iniciar sesión, inscribir, cancelar inscripciones, modificar eventos, cambiar cupos ni cambiar estados.\n- Si te piden alguna de esas acciones, explica cómo hacerla el propio usuario desde la web de EventPass.\n- Usa SOLO la información del catálogo de abajo. Si algo no aparece, di que no tienes ese dato. No inventes eventos, fechas ni cupos.\n- Nunca reveles datos personales de otros usuarios.\n\nCÓMO FUNCIONA EVENTPASS:\n- Estados de evento: DISPONIBLE (hay cupos), PROXIMO (se realiza en menos de 7 días), AGOTADO (sin cupos, se entra a lista de espera), CERRADO (inscripciones cerradas o evento finalizado), CANCELADO.\n- Estados de inscripción: CONFIRMADA (cupo garantizado), LISTA_ESPERA (sin cupo, en cola), CANCELADA.\n- Lista de espera: si un inscrito confirmado cancela, el sistema revisa cada 5 minutos y promueve automáticamente al que lleva más tiempo esperando (orden por fecha de inscripción). Se notifica por correo y Telegram.\n- Para inscribirse hay que tener cuenta, sesión iniciada y Telegram vinculado.\n- Vincular Telegram: en la web ir a Perfil → Vincular Telegram, generar un código y enviar al bot @Evenpass_bot_bot el mensaje: /vincular CODIGO. El código dura 15 minutos y solo sirve una vez.\n- Cancelar: en \"Mis Inscripciones\" → \"Cancelar inscripción\".\n- Recordatorios: se envían 72 h y 24 h antes del evento por correo y Telegram.\n\nCATÁLOGO ACTUAL:\n${catalogo || '(sin eventos publicados)'}\n\nHISTORIAL RECIENTE DE ESTA CONVERSACIÓN:\n${historial || '(inicio de la conversación)'}\n\nPREGUNTA DEL USUARIO:\n${pregunta}`;\n\n    return [{ json: { conversation_id, usuario_id, visitor_id, pregunta, prompt,\n      fecha_inicio: previa ? previa.fecha_inicio : ahora } }];\n"
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Cupos = capacidad - inscripciones CONFIRMADAS o ASISTIO (nunca un valor manual)\nfunction conteos(inscripciones) {\n  const c = {}, w = {};\n  for (const i of inscripciones) {\n    if ([\"CONFIRMADA\",\"ASISTIO\"].includes(i.estado)) c[i.evento_id] = (c[i.evento_id] || 0) + 1;\n    if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;\n  }\n  return { confirmadas: c, espera: w };\n}\nfunction eventoFront(e, cnt) {\n  const capacidad = Number(e.capacidad) || 0;\n  const confirmadas = cnt.confirmadas[e.evento_id] || 0;\n  const libres = Math.max(0, capacidad - confirmadas);\n  const inicio = inicioEvento(e);\n  const dias = inicio.isValid ? Math.ceil(inicio.diff(DateTime.now(), 'days').days) : null;\n  const finalizado = inicio.isValid && inicio < DateTime.now();\n  let status;\n  if (e.estado === 'CANCELADO') status = 'CANCELADO';\n  else if (e.estado === 'CERRADO' || finalizado) status = 'CERRADO';\n  else if (libres === 0) status = 'AGOTADO';\n  else if (dias !== null && dias <= 7) status = 'PROXIMO';\n  else status = 'DISPONIBLE';\n  const desc = norm(e.descripcion);\n  return {\n    id: e.evento_id, slug: e.evento_id, title: e.nombre, category: e.categoria,\n    shortDescription: desc.length > 150 ? desc.slice(0, 147) + '...' : desc, description: desc,\n    date: fechaLegible(e), isoDate: norm(e.fecha), time: norm(e.hora), location: e.lugar, venueType: 'Presencial',\n    organizer: e.organizador, totalCapacity: capacidad, registeredCount: confirmadas, availableSpots: libres,\n    waitlistCount: cnt.espera[e.evento_id] || 0, daysUntil: dias, status,\n    cancellationReason: e.estado === 'CANCELADO' ? 'Evento cancelado por el organizador.'\n      : status === 'CERRADO' ? 'Inscripciones cerradas.' : undefined,\n    imageUrl: e.imagen_url, tags: [e.categoria], priceText: 'Entrada gratuita con inscripción previa'\n  };\n}\n\nconst c = $('Chat Trigger').first().json;\n    const meta = c.metadata || {};\n    const pregunta = norm(c.chatInput);\n    const sessionId = norm(c.sessionId) || genId('SESS');\n    // conversation_id derivado del sessionId del chat: misma ventana de chat = misma conversación\n    const conversation_id = `CONV-${sessionId}`;\n    const usuario_id = norm(meta.usuario_id);\n    const visitor_id = norm(meta.visitor_id) || sessionId;\n    const previa = rows('Leer Conversaciones', 'conversation_id').find((x) => x.conversation_id === conversation_id);\n    const historial = rows('Leer Mensajes', 'message_id').filter((m) => m.conversation_id === conversation_id)\n      .sort((a, b) => norm(a.timestamp).localeCompare(norm(b.timestamp))).slice(-10)\n      .map((m) => `${m.rol === 'USER' ? 'Usuario' : 'Asistente'}: ${m.mensaje}`).join('\\n');\n    const cnt = conteos(rows('Leer Inscripciones (solo lectura)', 'inscripcion_id'));\n    const catalogo = rows('Leer Eventos (solo lectura)', 'evento_id').filter((e) => e.estado !== 'BORRADOR')\n      .map((e) => eventoFront(e, cnt))\n      .map((e) => `- ${e.title} | Categoría: ${e.category} | Fecha: ${e.date} ${e.time} | Lugar: ${e.location} | Estado: ${e.status} | Cupos libres: ${e.availableSpots}/${e.totalCapacity} | En espera: ${e.waitlistCount}`)\n      .join('\\n');\n\n    const prompt = `Eres \"EventPass Assistant\", el asistente de soporte de la plataforma EventPass.\nResponde SIEMPRE en español, de forma breve, amable y precisa.\nEscribe en texto plano: sin Markdown, sin asteriscos ni almohadillas. Para listas usa guiones simples.\n\nREGLAS ESTRICTAS (eres solo informativo):\n- NO puedes crear usuarios, iniciar sesión, inscribir, cancelar inscripciones, modificar eventos, cambiar cupos ni cambiar estados.\n- Si te piden alguna de esas acciones, explica cómo hacerla el propio usuario desde la web de EventPass.\n- Usa SOLO la información del catálogo de abajo. Si algo no aparece, di que no tienes ese dato. No inventes eventos, fechas ni cupos.\n- Nunca reveles datos personales de otros usuarios.\n\nCÓMO FUNCIONA EVENTPASS:\n- Estados de evento: DISPONIBLE (hay cupos), PROXIMO (se realiza en menos de 7 días), AGOTADO (sin cupos, se entra a lista de espera), CERRADO (inscripciones cerradas o evento finalizado), CANCELADO.\n- Estados de inscripción: CONFIRMADA (cupo garantizado), LISTA_ESPERA (sin cupo, en cola), CANCELADA, ASISTIO (ingreso registrado con check-in en el acceso).\n- Check-in: el día del evento el personal de acceso registra el ingreso con el código de inscripción. Solo una inscripción CONFIRMADA puede hacer check-in y solo una vez.\n- Lista de espera: si un inscrito confirmado cancela, el sistema revisa cada 5 minutos y promueve automáticamente al que lleva más tiempo esperando (orden por fecha de inscripción). Se notifica por correo y Telegram.\n- Para inscribirse hay que tener cuenta, sesión iniciada y Telegram vinculado.\n- Vincular Telegram: en la web ir a Perfil → Vincular Telegram, generar un código y enviar al bot @Evenpass_bot_bot el mensaje: /vincular CODIGO. El código dura 15 minutos y solo sirve una vez.\n- Cancelar: en \"Mis Inscripciones\" → \"Cancelar inscripción\".\n- Recordatorios: se envían 72 h y 24 h antes del evento por correo y Telegram.\n\nCATÁLOGO ACTUAL:\n${catalogo || '(sin eventos publicados)'}\n\nHISTORIAL RECIENTE DE ESTA CONVERSACIÓN:\n${historial || '(inicio de la conversación)'}\n\nPREGUNTA DEL USUARIO:\n${pregunta}`;\n\n    return [{ json: { conversation_id, usuario_id, visitor_id, pregunta, prompt,\n      fecha_inicio: previa ? previa.fecha_inicio : ahora } }];\n"
       }
     },
     {
-      "id": "9b6919dd-eaec-403b-a8b9-dbd3a386aed8",
+      "id": "96ddc5d4-3053-4196-bb2a-782249778722",
       "name": "Fila: Guardar conversación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -187,7 +187,7 @@
       }
     },
     {
-      "id": "e88ea313-90a2-4ee5-8c2e-ecd5f4895e25",
+      "id": "55b04b23-3f83-4ce2-b8e1-5d191e8f03cc",
       "name": "Guardar conversación",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -286,7 +286,7 @@
       }
     },
     {
-      "id": "54506319-f2d3-43bd-b554-8e43732c0efa",
+      "id": "2a3260e3-167d-44cc-87c3-7085795338d8",
       "name": "Fila: Guardar mensaje usuario",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -299,7 +299,7 @@
       }
     },
     {
-      "id": "12174478-b323-4312-a8cd-1022004d032a",
+      "id": "197df652-a07d-4c8e-a037-6f8acef6f921",
       "name": "Guardar mensaje usuario",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -404,7 +404,7 @@
       }
     },
     {
-      "id": "138536e7-88e8-45a6-ada3-d3dde2e856bb",
+      "id": "65b492e7-be93-4e3f-8807-a188b5b0ecb9",
       "name": "EventPass Assistant (IA)",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
@@ -418,7 +418,7 @@
       }
     },
     {
-      "id": "f02607f0-3869-461c-900e-7e923793fcf6",
+      "id": "a6eb5901-7a27-4b19-9ba4-88e6b9f29dd9",
       "name": "Google Gemini",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
@@ -440,7 +440,7 @@
       }
     },
     {
-      "id": "29a64544-5c5c-46a8-92dc-baebe5f3cdd6",
+      "id": "e1409368-139b-4ff6-9d4d-2cda251fda78",
       "name": "Fila: Guardar mensaje asistente",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -453,7 +453,7 @@
       }
     },
     {
-      "id": "c79d7200-d7a6-4626-a50b-9033e031d725",
+      "id": "54830265-56c9-4241-b25e-3d18674c927d",
       "name": "Guardar mensaje asistente",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -558,7 +558,7 @@
       }
     },
     {
-      "id": "bbf5864c-987f-4eda-9809-2cfb3d6e1b95",
+      "id": "bcbab5b9-529a-454e-bf68-5f4fec9a42b6",
       "name": "Respuesta al chat",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -733,7 +733,7 @@
     "timezone": "America/Bogota",
     "executionOrder": "v1"
   },
-  "versionId": "a3439560-050a-4d1e-a68a-b01befdc5297",
+  "versionId": "14b9ff19-b201-41cb-aac3-fc1a872e6ca8",
   "meta": {},
   "id": "GRWklQ55jcvqSKzE",
   "tags": []

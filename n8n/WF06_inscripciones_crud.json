@@ -2,9 +2,9 @@
   "name": "WF06 - Inscripciones CRUD",
   "nodes": [
     {
-      "id": "9ac77bbf-f939-4aff-91c0-30a99410f593",
+      "id": "69b00567-9760-4be0-bb2b-f34d07aa4bb5",
       "name": "Webhook",
-      "webhookId": "3449e5a6-d5e1-4953-8b0e-fbfdeb1bad21",
+      "webhookId": "82af0cf1-0de9-9456-85bf-2cc964a2f225",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -21,7 +21,7 @@
       }
     },
     {
-      "id": "e5c19372-e3cd-4a52-9c41-43506436dc4c",
+      "id": "9bf932cd-8531-48b7-ba70-e2eb7c0d5858",
       "name": "Leer Sesiones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "id": "be5ccd7f-e1ef-4602-b619-4f12921d2472",
+      "id": "64e25303-b9e0-4928-9a21-e6d613b8e1bc",
       "name": "Leer Usuarios",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "id": "5b72c1dd-1308-422a-908a-7de8fc4da248",
+      "id": "7ab326f3-b05d-4342-a359-d0ab9c94c280",
       "name": "Leer Vinculación Telegram",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -125,7 +125,7 @@
       }
     },
     {
-      "id": "2320a8c1-e020-48af-b8d9-3c9f65aea351",
+      "id": "d9dea1d8-25e9-45bf-b380-06d23949b004",
       "name": "Leer Eventos",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -160,7 +160,7 @@
       }
     },
     {
-      "id": "cb6c6d6c-8e1c-4f9f-8873-cd5badad7f8b",
+      "id": "c0d36526-ead6-45cf-96a1-30c845720eb2",
       "name": "Leer Inscripciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -195,7 +195,7 @@
       }
     },
     {
-      "id": "64d67146-074d-4834-b906-953f444abbec",
+      "id": "3d8bf504-a8a9-463c-8a9e-11cc8f55b9ec",
       "name": "Validar y calcular cupos",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -204,11 +204,11 @@
         180
       ],
       "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst vinculaciones = rows('Leer Vinculación Telegram', 'vinculacion_id');\nconst eventos = rows('Leer Eventos', 'evento_id');\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst evMap = Object.fromEntries(eventos.map((e) => [e.evento_id, e]));\nconst porFecha = (a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion));\n\nconst auditar = (i, accion, antes, despues, resultado, detalle) => ({ auditoria_id: genId('AUD'),\n  inscripcion_id: i?.inscripcion_id || '', usuario_id: i?.usuario_id || '', evento_id: i?.evento_id || norm(body.evento_id),\n  accion, estado_anterior: antes, estado_nuevo: despues, fecha: ahora, resultado, detalle });\nconst out = (route, status, payload, extra = {}) => [{ json: { route, status, body: payload, ...extra } }];\nconst fail = (status, error, audit) => out(audit ? 'auditar' : 'responder', status, { success: false, error }, { audit });\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return fail(ses.status, ses.error);\nconst u = ses.usuario;\n\nconst posicionEspera = (i) => insc.filter((x) => x.evento_id === i.evento_id && x.estado === 'LISTA_ESPERA')\n  .sort(porFecha).findIndex((x) => x.inscripcion_id === i.inscripcion_id) + 1;\nconst toReg = (i) => {\n  const e = evMap[i.evento_id] || {};\n  return { id: i.inscripcion_id, ticketCode: i.inscripcion_id, eventId: i.evento_id, eventTitle: e.nombre || i.evento_id,\n    eventCategory: e.categoria || '', eventDate: e.fecha ? fechaLegible(e) : '', eventTime: norm(e.hora),\n    eventLocation: e.lugar || '', eventImageUrl: e.imagen_url || '', userEmail: u.email_normalizado,\n    userName: i.nombre_acreditacion || u.nombre, status: i.estado, registeredAt: i.fecha_inscripcion,\n    notes: i.observaciones || (i.estado === 'LISTA_ESPERA' ? `Posición en lista de espera: #${posicionEspera(i)}` : ''),\n    cancellationReason: i.motivo_cancelacion || undefined,\n    qrPayload: `EVENTPASS|${i.inscripcion_id}|${i.evento_id}|${i.usuario_id}|${i.estado}` };\n};\n\nif (action === 'list') {\n  const data = insc.filter((i) => i.usuario_id === u.usuario_id).sort((a, b) => porFecha(b, a)).map(toReg);\n  return out('responder', 200, { success: true, data });\n}\n\nif (action === 'create') {\n  const audit = (m) => auditar({ usuario_id: u.usuario_id, evento_id: norm(body.evento_id) }, 'CREAR', '', '', 'ERROR', m);\n  const vinc = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  if (!vinc) {\n    const m = 'Debes vincular tu cuenta de Telegram antes de inscribirte (Perfil → Vincular Telegram).';\n    return fail(403, m, audit(m));\n  }\n  const ev = evMap[norm(body.evento_id)];\n  if (!ev) return fail(404, 'El evento no existe.', audit('Evento inexistente'));\n  if (ev.estado !== 'PUBLICADO') {\n    const m = `El evento no admite inscripciones (estado ${ev.estado}).`;\n    return fail(409, m, audit(m));\n  }\n  const inicio = inicioEvento(ev);\n  if (inicio.isValid && inicio < DateTime.now()) return fail(409, 'El evento ya se realizó.', audit('Evento finalizado'));\n\n  // Idempotencia: usuario_id + evento_id no puede tener dos inscripciones activas\n  const activa = insc.find((i) => i.usuario_id === u.usuario_id && i.evento_id === ev.evento_id && i.estado !== 'CANCELADA');\n  if (activa) {\n    const m = `Ya tienes una inscripción activa (${activa.estado}) para este evento.`;\n    return out('auditar', 409, { success: false, error: m, data: toReg(activa) },\n      { audit: auditar(activa, 'CREAR', activa.estado, activa.estado, 'DUPLICADO', m) });\n  }\n\n  const confirmadas = insc.filter((i) => i.evento_id === ev.evento_id && i.estado === 'CONFIRMADA').length;\n  const enEspera = insc.filter((i) => i.evento_id === ev.evento_id && i.estado === 'LISTA_ESPERA').length;\n  const hayCupo = confirmadas < (Number(ev.capacidad) || 0);\n  const estado = hayCupo ? 'CONFIRMADA' : 'LISTA_ESPERA';\n  const row = { inscripcion_id: genId('INS'), usuario_id: u.usuario_id, evento_id: ev.evento_id, estado,\n    fecha_inscripcion: ahora, fecha_actualizacion: ahora, nombre_acreditacion: norm(body.nombre_acreditacion) || u.nombre,\n    observaciones: norm(body.observaciones), origen: 'WEB', orden_espera: hayCupo ? '' : String(enEspera + 1), motivo_cancelacion: '' };\n  insc.push(row);\n  const tipo = hayCupo ? 'INSCRIPCION_CONFIRMADA' : 'LISTA_ESPERA';\n  const notif = { usuario_id: u.usuario_id, tipo,\n    titulo: hayCupo ? `Inscripción confirmada: ${ev.nombre}` : `Lista de espera: ${ev.nombre}`,\n    mensaje: hayCupo\n      ? `Tu inscripción a \"${ev.nombre}\" está CONFIRMADA.\\nFecha: ${fechaLegible(ev)} ${ev.hora}\\nLugar: ${ev.lugar}\\nCódigo: ${row.inscripcion_id}`\n      : `El evento \"${ev.nombre}\" no tiene cupos. Quedaste en LISTA DE ESPERA en la posición #${enEspera + 1}. Te avisaremos si se libera un cupo.`,\n    evento_id: ev.evento_id, inscripcion_id: row.inscripcion_id, clave_idempotencia: `${tipo}|${row.inscripcion_id}` };\n  return out('crear', 201, { success: true, data: toReg(row),\n    message: hayCupo ? '¡Inscripción CONFIRMADA! Te enviamos la confirmación por correo y Telegram.'\n      : 'Evento lleno: quedaste en LISTA DE ESPERA. Te avisaremos si se libera un cupo.' },\n    { row, notif, audit: auditar(row, 'CREAR', '', estado, 'OK', hayCupo ? 'Cupo asignado' : 'Sin cupo, lista de espera') });\n}\n\nconst propia = insc.find((i) => i.inscripcion_id === norm(body.inscripcion_id) && i.usuario_id === u.usuario_id);\nif (['update', 'cancel'].includes(action) && !propia) return fail(404, 'Inscripción no encontrada.');\n\nif (action === 'update') {\n  if (propia.estado === 'CANCELADA') return fail(409, 'No se puede modificar una inscripción cancelada.');\n  const row = { ...pick(propia), fecha_actualizacion: ahora,\n    nombre_acreditacion: body.nombre_acreditacion !== undefined ? norm(body.nombre_acreditacion) || u.nombre : propia.nombre_acreditacion,\n    observaciones: body.observaciones !== undefined ? norm(body.observaciones) : propia.observaciones };\n  return out('actualizar', 200, { success: true, data: toReg(row), message: 'Inscripción actualizada.' },\n    { row, audit: auditar(row, 'ACTUALIZAR', propia.estado, propia.estado, 'OK', 'Datos de acreditación actualizados') });\n}\n\nif (action === 'cancel') {\n  if (propia.estado === 'CANCELADA') return fail(409, 'La inscripción ya estaba cancelada.');\n  const ev = evMap[propia.evento_id] || { nombre: propia.evento_id };\n  const motivo = norm(body.motivo) || 'Cancelada a petición del usuario';\n  const row = { ...pick(propia), estado: 'CANCELADA', fecha_actualizacion: ahora, orden_espera: '', motivo_cancelacion: motivo };\n  const notif = { usuario_id: u.usuario_id, tipo: 'INSCRIPCION_CANCELADA', titulo: `Inscripción cancelada: ${ev.nombre}`,\n    mensaje: `Tu inscripción ${row.inscripcion_id} a \"${ev.nombre}\" fue cancelada. Motivo: ${motivo}.`,\n    evento_id: row.evento_id, inscripcion_id: row.inscripcion_id, clave_idempotencia: `INSCRIPCION_CANCELADA|${row.inscripcion_id}` };\n  return out('actualizar', 200, { success: true, data: toReg(row),\n    message: propia.estado === 'CONFIRMADA' ? 'Inscripción cancelada. El cupo será reasignado a la lista de espera.' : 'Inscripción cancelada.' },\n    { row, notif, audit: auditar(row, 'CANCELAR', propia.estado, 'CANCELADA', 'OK', motivo) });\n}\n\nreturn fail(400, 'Acción no soportada. Usa create, list, update o cancel.');\n"
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Una sesión es válida solo si existe, está ACTIVA, no expiró y su usuario está ACTIVO.\nfunction validarSesion(token, sesiones, usuarios) {\n  const s = sesiones.find((x) => norm(x.session_token) === norm(token));\n  if (!norm(token) || !s) return { ok: false, status: 401, error: 'Sesión no encontrada. Inicia sesión nuevamente.' };\n  if (s.estado !== 'ACTIVA') return { ok: false, status: 401, error: `La sesión está ${String(s.estado).toLowerCase()}. Inicia sesión nuevamente.` };\n  if (new Date(s.expira_en) < new Date()) return { ok: false, status: 401, error: 'La sesión expiró. Inicia sesión nuevamente.' };\n  const u = usuarios.find((x) => x.usuario_id === s.usuario_id);\n  if (!u || u.estado !== 'ACTIVO') return { ok: false, status: 403, error: 'El usuario no existe o está INACTIVO.' };\n  return { ok: true, sesion: s, usuario: u };\n}\n\nconst body = $('Webhook').first().json.body || {};\nconst action = norm(body.action).toLowerCase();\nconst sesiones = rows('Leer Sesiones', 'session_token');\nconst usuarios = rows('Leer Usuarios', 'usuario_id');\nconst vinculaciones = rows('Leer Vinculación Telegram', 'vinculacion_id');\nconst eventos = rows('Leer Eventos', 'evento_id');\nconst insc = rows('Leer Inscripciones', 'inscripcion_id');\nconst COLS = [\"inscripcion_id\",\"usuario_id\",\"evento_id\",\"estado\",\"fecha_inscripcion\",\"fecha_actualizacion\",\"nombre_acreditacion\",\"observaciones\",\"origen\",\"orden_espera\",\"motivo_cancelacion\"];\nconst pick = (o) => Object.fromEntries(COLS.map((c) => [c, o?.[c] ?? '']));\nconst evMap = Object.fromEntries(eventos.map((e) => [e.evento_id, e]));\nconst porFecha = (a, b) => norm(a.fecha_inscripcion).localeCompare(norm(b.fecha_inscripcion));\n\nconst auditar = (i, accion, antes, despues, resultado, detalle) => ({ auditoria_id: genId('AUD'),\n  inscripcion_id: i?.inscripcion_id || '', usuario_id: i?.usuario_id || '', evento_id: i?.evento_id || norm(body.evento_id),\n  accion, estado_anterior: antes, estado_nuevo: despues, fecha: ahora, resultado, detalle });\nconst out = (route, status, payload, extra = {}) => [{ json: { route, status, body: payload, ...extra } }];\nconst fail = (status, error, audit) => out(audit ? 'auditar' : 'responder', status, { success: false, error }, { audit });\n\nconst ses = validarSesion(body.session_token, sesiones, usuarios);\nif (!ses.ok) return fail(ses.status, ses.error);\nconst u = ses.usuario;\n\nconst posicionEspera = (i) => insc.filter((x) => x.evento_id === i.evento_id && x.estado === 'LISTA_ESPERA')\n  .sort(porFecha).findIndex((x) => x.inscripcion_id === i.inscripcion_id) + 1;\nconst toReg = (i) => {\n  const e = evMap[i.evento_id] || {};\n  return { id: i.inscripcion_id, ticketCode: i.inscripcion_id, eventId: i.evento_id, eventTitle: e.nombre || i.evento_id,\n    eventCategory: e.categoria || '', eventDate: e.fecha ? fechaLegible(e) : '', eventTime: norm(e.hora),\n    eventLocation: e.lugar || '', eventImageUrl: e.imagen_url || '', userEmail: u.email_normalizado,\n    userName: i.nombre_acreditacion || u.nombre, status: i.estado, registeredAt: i.fecha_inscripcion,\n    notes: i.observaciones || (i.estado === 'LISTA_ESPERA' ? `Posición en lista de espera: #${posicionEspera(i)}` : ''),\n    cancellationReason: i.motivo_cancelacion || undefined,\n    qrPayload: `EVENTPASS|${i.inscripcion_id}|${i.evento_id}|${i.usuario_id}|${i.estado}` };\n};\n\nif (action === 'list') {\n  const data = insc.filter((i) => i.usuario_id === u.usuario_id).sort((a, b) => porFecha(b, a)).map(toReg);\n  return out('responder', 200, { success: true, data });\n}\n\nif (action === 'create') {\n  const audit = (m) => auditar({ usuario_id: u.usuario_id, evento_id: norm(body.evento_id) }, 'CREAR', '', '', 'ERROR', m);\n  const vinc = vinculaciones.find((x) => x.usuario_id === u.usuario_id && x.estado === 'ACTIVA');\n  if (!vinc) {\n    const m = 'Debes vincular tu cuenta de Telegram antes de inscribirte (Perfil → Vincular Telegram).';\n    return fail(403, m, audit(m));\n  }\n  const ev = evMap[norm(body.evento_id)];\n  if (!ev) return fail(404, 'El evento no existe.', audit('Evento inexistente'));\n  if (ev.estado !== 'PUBLICADO') {\n    const m = `El evento no admite inscripciones (estado ${ev.estado}).`;\n    return fail(409, m, audit(m));\n  }\n  const inicio = inicioEvento(ev);\n  if (inicio.isValid && inicio < DateTime.now()) return fail(409, 'El evento ya se realizó.', audit('Evento finalizado'));\n\n  // Idempotencia: usuario_id + evento_id no puede tener dos inscripciones activas\n  const activa = insc.find((i) => i.usuario_id === u.usuario_id && i.evento_id === ev.evento_id && i.estado !== 'CANCELADA');\n  if (activa) {\n    const m = `Ya tienes una inscripción activa (${activa.estado}) para este evento.`;\n    return out('auditar', 409, { success: false, error: m, data: toReg(activa) },\n      { audit: auditar(activa, 'CREAR', activa.estado, activa.estado, 'DUPLICADO', m) });\n  }\n\n  const confirmadas = insc.filter((i) => i.evento_id === ev.evento_id && [\"CONFIRMADA\",\"ASISTIO\"].includes(i.estado)).length;\n  const enEspera = insc.filter((i) => i.evento_id === ev.evento_id && i.estado === 'LISTA_ESPERA').length;\n  const hayCupo = confirmadas < (Number(ev.capacidad) || 0);\n  const estado = hayCupo ? 'CONFIRMADA' : 'LISTA_ESPERA';\n  const row = { inscripcion_id: genId('INS'), usuario_id: u.usuario_id, evento_id: ev.evento_id, estado,\n    fecha_inscripcion: ahora, fecha_actualizacion: ahora, nombre_acreditacion: norm(body.nombre_acreditacion) || u.nombre,\n    observaciones: norm(body.observaciones), origen: 'WEB', orden_espera: hayCupo ? '' : String(enEspera + 1), motivo_cancelacion: '' };\n  insc.push(row);\n  const tipo = hayCupo ? 'INSCRIPCION_CONFIRMADA' : 'LISTA_ESPERA';\n  const notif = { usuario_id: u.usuario_id, tipo,\n    titulo: hayCupo ? `Inscripción confirmada: ${ev.nombre}` : `Lista de espera: ${ev.nombre}`,\n    mensaje: hayCupo\n      ? `Tu inscripción a \"${ev.nombre}\" está CONFIRMADA.\\nFecha: ${fechaLegible(ev)} ${ev.hora}\\nLugar: ${ev.lugar}\\nCódigo: ${row.inscripcion_id}`\n      : `El evento \"${ev.nombre}\" no tiene cupos. Quedaste en LISTA DE ESPERA en la posición #${enEspera + 1}. Te avisaremos si se libera un cupo.`,\n    evento_id: ev.evento_id, inscripcion_id: row.inscripcion_id, clave_idempotencia: `${tipo}|${row.inscripcion_id}` };\n  return out('crear', 201, { success: true, data: toReg(row),\n    message: hayCupo ? '¡Inscripción CONFIRMADA! Te enviamos la confirmación por correo y Telegram.'\n      : 'Evento lleno: quedaste en LISTA DE ESPERA. Te avisaremos si se libera un cupo.' },\n    { row, notif, audit: auditar(row, 'CREAR', '', estado, 'OK', hayCupo ? 'Cupo asignado' : 'Sin cupo, lista de espera') });\n}\n\nconst propia = insc.find((i) => i.inscripcion_id === norm(body.inscripcion_id) && i.usuario_id === u.usuario_id);\nif (['update', 'cancel'].includes(action) && !propia) return fail(404, 'Inscripción no encontrada.');\n\nif (action === 'update') {\n  if (propia.estado === 'CANCELADA') return fail(409, 'No se puede modificar una inscripción cancelada.');\n  const row = { ...pick(propia), fecha_actualizacion: ahora,\n    nombre_acreditacion: body.nombre_acreditacion !== undefined ? norm(body.nombre_acreditacion) || u.nombre : propia.nombre_acreditacion,\n    observaciones: body.observaciones !== undefined ? norm(body.observaciones) : propia.observaciones };\n  return out('actualizar', 200, { success: true, data: toReg(row), message: 'Inscripción actualizada.' },\n    { row, audit: auditar(row, 'ACTUALIZAR', propia.estado, propia.estado, 'OK', 'Datos de acreditación actualizados') });\n}\n\nif (action === 'cancel') {\n  if (propia.estado === 'CANCELADA') return fail(409, 'La inscripción ya estaba cancelada.');\n  if (propia.estado === 'ASISTIO') return fail(409, 'No se puede cancelar: ya registraste tu ingreso al evento.');\n  const ev = evMap[propia.evento_id] || { nombre: propia.evento_id };\n  const motivo = norm(body.motivo) || 'Cancelada a petición del usuario';\n  const row = { ...pick(propia), estado: 'CANCELADA', fecha_actualizacion: ahora, orden_espera: '', motivo_cancelacion: motivo };\n  const notif = { usuario_id: u.usuario_id, tipo: 'INSCRIPCION_CANCELADA', titulo: `Inscripción cancelada: ${ev.nombre}`,\n    mensaje: `Tu inscripción ${row.inscripcion_id} a \"${ev.nombre}\" fue cancelada. Motivo: ${motivo}.`,\n    evento_id: row.evento_id, inscripcion_id: row.inscripcion_id, clave_idempotencia: `INSCRIPCION_CANCELADA|${row.inscripcion_id}` };\n  return out('actualizar', 200, { success: true, data: toReg(row),\n    message: propia.estado === 'CONFIRMADA' ? 'Inscripción cancelada. El cupo será reasignado a la lista de espera.' : 'Inscripción cancelada.' },\n    { row, notif, audit: auditar(row, 'CANCELAR', propia.estado, 'CANCELADA', 'OK', motivo) });\n}\n\nreturn fail(400, 'Acción no soportada. Usa create, list, update o cancel.');\n"
       }
     },
     {
-      "id": "590cc7ed-1614-4971-8b4b-06df528e56c8",
+      "id": "6187c48c-8cbe-4000-a495-3e0faa9d9860",
       "name": "Según operación",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
@@ -228,7 +228,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "1cdcae60-d9ae-4434-9199-93b81abdfb26",
+                    "id": "bc9c1597-ece3-4808-92df-3ffa97fb6163",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "crear",
                     "operator": {
@@ -251,7 +251,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "c5f0de9f-b539-4552-bea6-cb3e0363bab7",
+                    "id": "b6fc4ae5-4d8a-423d-be7e-ecae2032ed6b",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "actualizar",
                     "operator": {
@@ -274,7 +274,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "7e01366c-82f7-4367-9d6a-efaae3d74a1e",
+                    "id": "c128c3ed-134a-4091-ab21-bf9bed50e09b",
                     "leftValue": "={{ $json.route }}",
                     "rightValue": "auditar",
                     "operator": {
@@ -297,7 +297,7 @@
       }
     },
     {
-      "id": "ac10a665-9d5b-47b0-b387-520f19432a82",
+      "id": "2cadbc5f-8f9f-46cc-8ce5-78c9b6c22501",
       "name": "Fila: Crear inscripción",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -310,7 +310,7 @@
       }
     },
     {
-      "id": "5cb86809-d777-4c45-aeda-58e348f335f8",
+      "id": "953e2f0c-c7b0-4733-a373-8d95f4178de4",
       "name": "Crear inscripción",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -451,7 +451,7 @@
       }
     },
     {
-      "id": "4a3a65a6-f6b4-4fff-92a4-b3a0039fd3ad",
+      "id": "3d312b4e-c18e-4069-8097-0fe97413588b",
       "name": "Fila: Actualizar inscripción",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -464,7 +464,7 @@
       }
     },
     {
-      "id": "47ca14f6-28dc-4af7-be00-6a6726e6c5f4",
+      "id": "152a480d-d85c-493b-9b33-20aa428cb0ff",
       "name": "Actualizar inscripción",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -608,7 +608,7 @@
       }
     },
     {
-      "id": "025258be-5029-4db7-90c8-56d45d3f905c",
+      "id": "d8ef7b57-b440-4aab-89f9-adfb2ac285ff",
       "name": "Fila: Auditoría inscripciones",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -621,7 +621,7 @@
       }
     },
     {
-      "id": "6cc27b71-1428-4936-8e63-544cfbff72a3",
+      "id": "2dc2d302-1115-4c1c-a999-98b60fef7a9f",
       "name": "Auditoría inscripciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -753,7 +753,7 @@
       }
     },
     {
-      "id": "5ed3af7b-6882-417c-b0e4-2d65e2992990",
+      "id": "36dab0d5-6ba8-4759-add5-f8edf7c63d38",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -770,7 +770,7 @@
       }
     },
     {
-      "id": "c0538d4a-9967-4489-b6ee-db7b29fa72e8",
+      "id": "b1ee66d0-8884-4f57-bc07-93a116ab2804",
       "name": "¿Requiere notificación?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -787,7 +787,7 @@
           },
           "conditions": [
             {
-              "id": "f2d1a008-804d-496d-8240-864515393c49",
+              "id": "e661c0ad-69cb-47cc-8beb-0b8844c86f6e",
               "leftValue": "={{ Boolean($('Validar y calcular cupos').first().json.notif) }}",
               "rightValue": "",
               "operator": {
@@ -804,7 +804,7 @@
       }
     },
     {
-      "id": "7453c09a-1e36-43a6-964d-e43a56145449",
+      "id": "ae678686-c3dc-4b15-b654-10205f70266c",
       "name": "Datos de notificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -817,7 +817,7 @@
       }
     },
     {
-      "id": "f26e0a36-d5c5-4a26-a588-a46a0569fd4f",
+      "id": "4e46eb1a-5ef0-46ad-a5e4-ea6386f9ffcc",
       "name": "Notificar (WF09)",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -1054,7 +1054,7 @@
     "timezone": "America/Bogota",
     "executionOrder": "v1"
   },
-  "versionId": "c1b08ba4-2ea0-4d2e-b1d9-bbbf0a7a5c92",
+  "versionId": "605ca8d0-8767-48c7-b8d4-457b38c0110b",
   "meta": {},
   "id": "nWIfXBJpDQlE4m2X",
   "tags": []

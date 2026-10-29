@@ -2,9 +2,9 @@
   "name": "WF05 - Catálogo público",
   "nodes": [
     {
-      "id": "0eec6cb6-3ba5-45ed-82ce-282391bd5f45",
+      "id": "71f4efff-5c75-4762-a6e5-8d2f71fac499",
       "name": "Webhook",
-      "webhookId": "265cf206-0356-476e-93d4-89692b370b03",
+      "webhookId": "19fdf54c-7f05-04e2-ed4d-feaf841483be",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -21,7 +21,7 @@
       }
     },
     {
-      "id": "37be2e5f-7211-4b71-8a8c-a552e6158ff4",
+      "id": "8245d6d8-05c6-4d76-b653-ecd6daa6adab",
       "name": "Leer Eventos",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "id": "2e4390fd-47fa-4f35-9228-ab2f377ad95e",
+      "id": "a6bd48c5-eb41-47ad-b3d1-7a4aa330ceee",
       "name": "Leer Inscripciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "id": "fa5cfe79-24cd-4bda-9700-5f390bb82822",
+      "id": "2c0b0be9-edfc-4a49-8536-b4c0c7ab8170",
       "name": "Filtrar eventos publicables",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -103,7 +103,7 @@
       }
     },
     {
-      "id": "72b4fa1e-5321-4051-b324-4a867ba00ffe",
+      "id": "f23963ee-7462-4e2d-afb2-a609347cf82e",
       "name": "Calcular cupos (Aggregate)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -112,11 +112,11 @@
         180
       ],
       "parameters": {
-        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Cupos = capacidad - inscripciones CONFIRMADAS (nunca un valor manual)\nfunction conteos(inscripciones) {\n  const c = {}, w = {};\n  for (const i of inscripciones) {\n    if (i.estado === 'CONFIRMADA') c[i.evento_id] = (c[i.evento_id] || 0) + 1;\n    if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;\n  }\n  return { confirmadas: c, espera: w };\n}\nfunction eventoFront(e, cnt) {\n  const capacidad = Number(e.capacidad) || 0;\n  const confirmadas = cnt.confirmadas[e.evento_id] || 0;\n  const libres = Math.max(0, capacidad - confirmadas);\n  const inicio = inicioEvento(e);\n  const dias = inicio.isValid ? Math.ceil(inicio.diff(DateTime.now(), 'days').days) : null;\n  const finalizado = inicio.isValid && inicio < DateTime.now();\n  let status;\n  if (e.estado === 'CANCELADO') status = 'CANCELADO';\n  else if (e.estado === 'CERRADO' || finalizado) status = 'CERRADO';\n  else if (libres === 0) status = 'AGOTADO';\n  else if (dias !== null && dias <= 7) status = 'PROXIMO';\n  else status = 'DISPONIBLE';\n  const desc = norm(e.descripcion);\n  return {\n    id: e.evento_id, slug: e.evento_id, title: e.nombre, category: e.categoria,\n    shortDescription: desc.length > 150 ? desc.slice(0, 147) + '...' : desc, description: desc,\n    date: fechaLegible(e), isoDate: norm(e.fecha), time: norm(e.hora), location: e.lugar, venueType: 'Presencial',\n    organizer: e.organizador, totalCapacity: capacidad, registeredCount: confirmadas, availableSpots: libres,\n    waitlistCount: cnt.espera[e.evento_id] || 0, daysUntil: dias, status,\n    cancellationReason: e.estado === 'CANCELADO' ? 'Evento cancelado por el organizador.'\n      : status === 'CERRADO' ? 'Inscripciones cerradas.' : undefined,\n    imageUrl: e.imagen_url, tags: [e.categoria], priceText: 'Entrada gratuita con inscripción previa'\n  };\n}\n\nconst q = $('Webhook').first().json.query || {};\nconst eventos = $input.all().map((i) => i.json).filter((e) => e.evento_id);\nconst cnt = conteos(rows('Leer Inscripciones', 'inscripcion_id'));\nlet tipo, status = 200, body, count;\n\nif (norm(q.evento_id)) {\n  tipo = 'DETALLE';\n  const e = eventos.find((x) => x.evento_id === norm(q.evento_id));\n  if (!e) { status = 404; count = 0; body = { success: false, error: 'Evento no encontrado.' }; }\n  else { count = 1; body = { success: true, data: eventoFront(e, cnt) }; }\n} else {\n  let lista = eventos.map((e) => eventoFront(e, cnt));\n  tipo = 'LISTADO';\n  if (norm(q.categoria) && norm(q.categoria) !== 'Todas') {\n    tipo = 'FILTRO';\n    lista = lista.filter((e) => e.category === norm(q.categoria));\n  }\n  if (norm(q.disponibles) === 'true') {\n    tipo = 'FILTRO';\n    lista = lista.filter((e) => ['DISPONIBLE', 'PROXIMO'].includes(e.status));\n  }\n  // Primero los eventos abiertos, luego por fecha\n  const peso = { DISPONIBLE: 0, PROXIMO: 0, AGOTADO: 1, CERRADO: 2, CANCELADO: 3 };\n  lista.sort((a, b) => (peso[a.status] - peso[b.status]) || a.isoDate.localeCompare(b.isoDate));\n  count = lista.length;\n  body = { success: true, data: lista };\n}\nconst log = { consulta_id: genId('CON'), fecha: ahora, tipo, evento_id: norm(q.evento_id), categoria: norm(q.categoria),\n  resultado_count: String(count), visitor_id: norm(q.visitor_id) || 'anonimo', status_http: String(status) };\nreturn [{ json: { status, body, log } }];\n"
+        "jsCode": "const TZ = 'America/Bogota';\nconst ahora = new Date().toISOString();\nconst norm = (s) => String(s ?? '').trim();\nconst genId = (p) => `${p}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;\nconst rows = (nodo, clave) => $(nodo).all().map((i) => i.json).filter((r) => r && norm(r[clave]) !== '');\nconst inicioEvento = (e) => DateTime.fromISO(`${norm(e.fecha)}T${(norm(e.hora) || '00:00').padStart(5, '0')}`, { zone: TZ });\nconst fechaLegible = (e) => { const d = inicioEvento(e); return d.isValid ? d.setLocale('es').toFormat(\"d 'de' LLLL, yyyy\") : norm(e.fecha); };\n\n// Cupos = capacidad - inscripciones CONFIRMADAS o ASISTIO (nunca un valor manual)\nfunction conteos(inscripciones) {\n  const c = {}, w = {};\n  for (const i of inscripciones) {\n    if ([\"CONFIRMADA\",\"ASISTIO\"].includes(i.estado)) c[i.evento_id] = (c[i.evento_id] || 0) + 1;\n    if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;\n  }\n  return { confirmadas: c, espera: w };\n}\nfunction eventoFront(e, cnt) {\n  const capacidad = Number(e.capacidad) || 0;\n  const confirmadas = cnt.confirmadas[e.evento_id] || 0;\n  const libres = Math.max(0, capacidad - confirmadas);\n  const inicio = inicioEvento(e);\n  const dias = inicio.isValid ? Math.ceil(inicio.diff(DateTime.now(), 'days').days) : null;\n  const finalizado = inicio.isValid && inicio < DateTime.now();\n  let status;\n  if (e.estado === 'CANCELADO') status = 'CANCELADO';\n  else if (e.estado === 'CERRADO' || finalizado) status = 'CERRADO';\n  else if (libres === 0) status = 'AGOTADO';\n  else if (dias !== null && dias <= 7) status = 'PROXIMO';\n  else status = 'DISPONIBLE';\n  const desc = norm(e.descripcion);\n  return {\n    id: e.evento_id, slug: e.evento_id, title: e.nombre, category: e.categoria,\n    shortDescription: desc.length > 150 ? desc.slice(0, 147) + '...' : desc, description: desc,\n    date: fechaLegible(e), isoDate: norm(e.fecha), time: norm(e.hora), location: e.lugar, venueType: 'Presencial',\n    organizer: e.organizador, totalCapacity: capacidad, registeredCount: confirmadas, availableSpots: libres,\n    waitlistCount: cnt.espera[e.evento_id] || 0, daysUntil: dias, status,\n    cancellationReason: e.estado === 'CANCELADO' ? 'Evento cancelado por el organizador.'\n      : status === 'CERRADO' ? 'Inscripciones cerradas.' : undefined,\n    imageUrl: e.imagen_url, tags: [e.categoria], priceText: 'Entrada gratuita con inscripción previa'\n  };\n}\n\nconst q = $('Webhook').first().json.query || {};\nconst eventos = $input.all().map((i) => i.json).filter((e) => e.evento_id);\nconst cnt = conteos(rows('Leer Inscripciones', 'inscripcion_id'));\nlet tipo, status = 200, body, count;\n\nif (norm(q.evento_id)) {\n  tipo = 'DETALLE';\n  const e = eventos.find((x) => x.evento_id === norm(q.evento_id));\n  if (!e) { status = 404; count = 0; body = { success: false, error: 'Evento no encontrado.' }; }\n  else { count = 1; body = { success: true, data: eventoFront(e, cnt) }; }\n} else {\n  let lista = eventos.map((e) => eventoFront(e, cnt));\n  tipo = 'LISTADO';\n  if (norm(q.categoria) && norm(q.categoria) !== 'Todas') {\n    tipo = 'FILTRO';\n    lista = lista.filter((e) => e.category === norm(q.categoria));\n  }\n  if (norm(q.disponibles) === 'true') {\n    tipo = 'FILTRO';\n    lista = lista.filter((e) => ['DISPONIBLE', 'PROXIMO'].includes(e.status));\n  }\n  // Primero los eventos abiertos, luego por fecha\n  const peso = { DISPONIBLE: 0, PROXIMO: 0, AGOTADO: 1, CERRADO: 2, CANCELADO: 3 };\n  lista.sort((a, b) => (peso[a.status] - peso[b.status]) || a.isoDate.localeCompare(b.isoDate));\n  count = lista.length;\n  body = { success: true, data: lista };\n}\nconst log = { consulta_id: genId('CON'), fecha: ahora, tipo, evento_id: norm(q.evento_id), categoria: norm(q.categoria),\n  resultado_count: String(count), visitor_id: norm(q.visitor_id) || 'anonimo', status_http: String(status) };\nreturn [{ json: { status, body, log } }];\n"
       }
     },
     {
-      "id": "9ba92e5c-bc99-4b61-bc31-0d7ab11f1db2",
+      "id": "a0924d0c-40e2-4643-bb0e-15d9ac080e23",
       "name": "Fila: Registrar consulta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -129,7 +129,7 @@
       }
     },
     {
-      "id": "d212f8d4-ec0c-4d1a-8b9d-1fb68ec41362",
+      "id": "05ebf778-f5bf-4c24-a74c-bd3aa0b41f33",
       "name": "Registrar consulta",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -243,7 +243,7 @@
       }
     },
     {
-      "id": "82feb88d-d384-44b6-8abd-f3499f2121bc",
+      "id": "75b5d89b-0e17-46e8-8f6d-ff77fd19024d",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -345,7 +345,7 @@
     "timezone": "America/Bogota",
     "executionOrder": "v1"
   },
-  "versionId": "1d9e050e-113a-425a-be21-ba8a06cccb9b",
+  "versionId": "64c352c6-933c-4d9c-b97c-cbcf4e38da9a",
   "meta": {},
   "id": "NYksjvopZikbRgaP",
   "tags": []

@@ -29,7 +29,8 @@ export const N8nConfigModal: React.FC<N8nConfigModalProps> = ({
     { num: '07', name: 'Reasignación Lista de Espera', route: 'Schedule (cada 5 min)', purpose: 'Promueve por fecha de inscripción cuando se liberan cupos.' },
     { num: '08', name: 'Recordatorios', route: 'Schedule (cada hora)', purpose: 'Envía recordatorios 72 h y 24 h antes sin repetirlos.' },
     { num: '09', name: 'Notificaciones', route: 'Execute Sub-workflow', purpose: 'Envía por Gmail y Telegram y registra cada canal por separado.' },
-    { num: '10', name: 'EventPass Assistant', route: 'Chat Trigger + Gemini', purpose: 'Soporte conversacional informativo con historial persistido.' }
+    { num: '10', name: 'EventPass Assistant', route: 'Chat Trigger + Gemini', purpose: 'Soporte conversacional informativo con historial persistido.' },
+    { num: '11', name: 'Check-in digital', route: 'POST /ep/checkin', purpose: 'Valida y registra el ingreso (CONFIRMADA → ASISTIO) sin duplicados.' }
   ];
 
   const handleCopyEnv = () => {
@@ -101,10 +102,10 @@ export const N8nConfigModal: React.FC<N8nConfigModalProps> = ({
           </p>
         </div>
 
-        {/* The 10 Workflows of EventPass */}
+        {/* The 11 Workflows of EventPass */}
         <div className="space-y-3">
           <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-            Los 10 Workflows Preparados para n8n
+            Los 11 Workflows Preparados para n8n
           </h3>
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {workflows.map((wf) => (

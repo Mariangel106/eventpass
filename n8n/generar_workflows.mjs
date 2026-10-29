@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * EventPass - Generador de workflows de n8n (WF01 a WF10).
+ * EventPass - Generador de workflows de n8n (WF01 a WF11).
  *
  * Uso:
  *   cp n8n/config.example.json n8n/config.json   # completa IDs de hojas y credenciales
  *   node n8n/generar_workflows.mjs
  *
- * Genera n8n/generados/WF00..WF10_*.json, listos para importar en n8n (Import from File o
+ * Genera n8n/generados/WF00..WF11_*.json, listos para importar en n8n (Import from File o
  * node n8n/importar_workflows.mjs). Los JSON de la entrega (n8n/WF*.json) son los descargados
  * de n8n con node n8n/exportar_workflows.mjs; este generador no los toca.
  *
@@ -54,8 +54,12 @@ const COLS = {
   Notificaciones: ['notificacion_id', 'usuario_id', 'tipo', 'titulo', 'mensaje', 'evento_id', 'inscripcion_id', 'fecha',
     'gmail_estado', 'telegram_estado', 'gmail_error', 'telegram_error', 'clave_idempotencia'],
   Conversaciones: ['conversation_id', 'usuario_id', 'visitor_id', 'fecha_inicio', 'fecha_ultima_interaccion', 'estado'],
-  Mensajes: ['message_id', 'conversation_id', 'usuario_id', 'visitor_id', 'rol', 'mensaje', 'timestamp']
+  Mensajes: ['message_id', 'conversation_id', 'usuario_id', 'visitor_id', 'rol', 'mensaje', 'timestamp'],
+  Checkins: ['checkin_id', 'inscripcion_id', 'evento_id', 'usuario_id', 'fecha_checkin', 'resultado', 'detalle']
 };
+
+// Estados de inscripción que ocupan un cupo: quien ya asistió (ASISTIO) sigue ocupando su lugar
+const OCUPAN_CUPO = ['CONFIRMADA', 'ASISTIO'];
 
 // ---------------------------------------------------------------------------
 // Utilidades
@@ -71,6 +75,7 @@ function cuerpo(fn) {
 function reemplazar(texto) {
   return texto
     .replace(/__COLS_ALL__/g, () => JSON.stringify(COLS))
+    .replace(/__OCUPAN_CUPO__/g, () => JSON.stringify(OCUPAN_CUPO))
     .replace(/__COLS_(\w+)__/g, (_, hoja) => JSON.stringify(COLS[hoja]))
     .replace(/__CFG_(\w+)__/g, (_, clave) => String(CFG[clave]));
 }
@@ -258,11 +263,11 @@ function PERFIL_JS() {
 }
 
 function EVENTO_FRONT_JS() {
-  // Cupos = capacidad - inscripciones CONFIRMADAS (nunca un valor manual)
+  // Cupos = capacidad - inscripciones CONFIRMADAS o ASISTIO (nunca un valor manual)
   function conteos(inscripciones) {
     const c = {}, w = {};
     for (const i of inscripciones) {
-      if (i.estado === 'CONFIRMADA') c[i.evento_id] = (c[i.evento_id] || 0) + 1;
+      if (__OCUPAN_CUPO__.includes(i.estado)) c[i.evento_id] = (c[i.evento_id] || 0) + 1;
       if (i.estado === 'LISTA_ESPERA') w[i.evento_id] = (w[i.evento_id] || 0) + 1;
     }
     return { confirmadas: c, espera: w };
@@ -929,7 +934,7 @@ function wf06() {
           { audit: auditar(activa, 'CREAR', activa.estado, activa.estado, 'DUPLICADO', m) });
       }
 
-      const confirmadas = insc.filter((i) => i.evento_id === ev.evento_id && i.estado === 'CONFIRMADA').length;
+      const confirmadas = insc.filter((i) => i.evento_id === ev.evento_id && __OCUPAN_CUPO__.includes(i.estado)).length;
       const enEspera = insc.filter((i) => i.evento_id === ev.evento_id && i.estado === 'LISTA_ESPERA').length;
       const hayCupo = confirmadas < (Number(ev.capacidad) || 0);
       const estado = hayCupo ? 'CONFIRMADA' : 'LISTA_ESPERA';
@@ -964,6 +969,7 @@ function wf06() {
 
     if (action === 'cancel') {
       if (propia.estado === 'CANCELADA') return fail(409, 'La inscripción ya estaba cancelada.');
+      if (propia.estado === 'ASISTIO') return fail(409, 'No se puede cancelar: ya registraste tu ingreso al evento.');
       const ev = evMap[propia.evento_id] || { nombre: propia.evento_id };
       const motivo = norm(body.motivo) || 'Cancelada a petición del usuario';
       const row = { ...pick(propia), estado: 'CANCELADA', fecha_actualizacion: ahora, orden_espera: '', motivo_cancelacion: motivo };
@@ -1023,7 +1029,7 @@ function wf07() {
     const salida = [];
     for (const e of eventos) {
       const delEvento = insc.filter((i) => i.evento_id === e.evento_id);
-      const confirmadas = delEvento.filter((i) => i.estado === 'CONFIRMADA').length;
+      const confirmadas = delEvento.filter((i) => __OCUPAN_CUPO__.includes(i.estado)).length;
       const libres = (Number(e.capacidad) || 0) - confirmadas;
       if (libres <= 0) continue;
       // Prioridad: fecha_inscripcion ASC (quien más tiempo lleva esperando)
@@ -1264,7 +1270,8 @@ REGLAS ESTRICTAS (eres solo informativo):
 
 CÓMO FUNCIONA EVENTPASS:
 - Estados de evento: DISPONIBLE (hay cupos), PROXIMO (se realiza en menos de 7 días), AGOTADO (sin cupos, se entra a lista de espera), CERRADO (inscripciones cerradas o evento finalizado), CANCELADO.
-- Estados de inscripción: CONFIRMADA (cupo garantizado), LISTA_ESPERA (sin cupo, en cola), CANCELADA.
+- Estados de inscripción: CONFIRMADA (cupo garantizado), LISTA_ESPERA (sin cupo, en cola), CANCELADA, ASISTIO (ingreso registrado con check-in en el acceso).
+- Check-in: el día del evento el personal de acceso registra el ingreso con el código de inscripción. Solo una inscripción CONFIRMADA puede hacer check-in y solo una vez.
 - Lista de espera: si un inscrito confirmado cancela, el sistema revisa cada 5 minutos y promueve automáticamente al que lleva más tiempo esperando (orden por fecha de inscripción). Se notifica por correo y Telegram.
 - Para inscribirse hay que tener cuenta, sesión iniciada y Telegram vinculado.
 - Vincular Telegram: en la web ir a Perfil → Vincular Telegram, generar un código y enviar al bot @__CFG_telegram_bot_username__ el mensaje: /vincular CODIGO. El código dura __CFG_telegram_code_minutes__ minutos y solo sirve una vez.
@@ -1319,7 +1326,133 @@ ${pregunta}`;
 }
 
 // ===========================================================================
-// WF00 — Crear los 10 Google Sheets (se ejecuta una sola vez al configurar)
+// WF11 — Check-in digital (registro de ingreso al evento)
+// ===========================================================================
+function wf11() {
+  const wf = new Workflow('WF11 - Check-in digital');
+  const wh = wf.webhook('Webhook', 'ep/checkin', [0, 1]);
+  const r1 = wf.read('Leer inscripción', 'EP06_Inscripciones', 'Inscripciones', [1, 1], false);
+  const r2 = wf.read('Leer evento', 'EP04_Eventos', 'Eventos', [2, 1]);
+  const r3 = wf.read('Leer historial de check-in', 'EP11_Checkin', 'Checkins', [3, 1]);
+
+  // Cada validación recibe el contexto de la anterior; si ya hay un resultado (RECHAZADO o DUPLICADO)
+  // lo deja pasar sin cambios, así el primer motivo encontrado es el que se responde y se registra.
+  const v1 = wf.code('Validar existencia', js(BASE_JS, function () {
+    const body = $('Webhook').first().json.body || {};
+    const inscripcion_id = norm(body.inscripcion_id).toUpperCase();
+    const evento_id = norm(body.evento_id).toUpperCase();
+    const inscripcion = rows('Leer inscripción', 'inscripcion_id').find((i) => norm(i.inscripcion_id).toUpperCase() === inscripcion_id);
+    const evento = rows('Leer evento', 'evento_id').find((e) => norm(e.evento_id).toUpperCase() === evento_id);
+    const c = { inscripcion_id, evento_id, inscripcion: inscripcion || null, evento: evento || null,
+      resultado: '', status: 200, detalle: '' };
+    const rechazar = (status, detalle) => [{ json: { ...c, resultado: 'RECHAZADO', status, detalle } }];
+    if (!inscripcion_id || !evento_id) return rechazar(400, 'Debes enviar inscripcion_id y evento_id.');
+    if (!inscripcion) return rechazar(404, `La inscripción ${inscripcion_id} no existe.`);
+    if (!evento) return rechazar(404, `El evento ${evento_id} no existe.`);
+    return [{ json: c }];
+  }), [4, 1]);
+
+  const v2 = wf.code('Validar correspondencia inscripción-evento', cuerpo(function () {
+    const c = $input.first().json;
+    if (c.resultado) return [{ json: c }];
+    if (String(c.inscripcion.evento_id).toUpperCase() !== c.evento_id) {
+      return [{ json: { ...c, resultado: 'RECHAZADO', status: 409,
+        detalle: `La inscripción ${c.inscripcion_id} pertenece al evento ${c.inscripcion.evento_id}, no a ${c.evento_id}.` } }];
+    }
+    return [{ json: c }];
+  }), [5, 1]);
+
+  const v3 = wf.code('Validar duplicado', js(BASE_JS, function () {
+    const c = $input.first().json;
+    if (c.resultado) return [{ json: c }];
+    // Idempotencia: un check-in EXITOSO previo (o la inscripción ya en ASISTIO) impide un segundo ingreso
+    const previo = rows('Leer historial de check-in', 'checkin_id')
+      .find((k) => norm(k.inscripcion_id).toUpperCase() === c.inscripcion_id && k.resultado === 'EXITOSO');
+    if (previo || c.inscripcion.estado === 'ASISTIO') {
+      const cuando = previo ? DateTime.fromISO(previo.fecha_checkin, { zone: TZ }).setLocale('es').toFormat("d 'de' LLLL 'a las' HH:mm") : '';
+      return [{ json: { ...c, resultado: 'DUPLICADO', status: 409, checkin_previo: previo ? previo.checkin_id : '',
+        detalle: previo ? `El ingreso ya había sido registrado el ${cuando} (check-in ${previo.checkin_id}).`
+          : 'El ingreso ya había sido registrado: la inscripción está en estado ASISTIO.' } }];
+    }
+    return [{ json: c }];
+  }), [6, 1]);
+
+  const v4 = wf.code('Validar estado', cuerpo(function () {
+    const c = $input.first().json;
+    if (c.resultado) return [{ json: c }];
+    const rechazar = (detalle) => [{ json: { ...c, resultado: 'RECHAZADO', status: 409, detalle } }];
+    if (c.evento.estado === 'CANCELADO') return rechazar(`El evento ${c.evento_id} fue cancelado: no admite ingresos.`);
+    const motivos = {
+      LISTA_ESPERA: 'La inscripción está en LISTA DE ESPERA: no tiene un cupo confirmado para ingresar.',
+      CANCELADA: 'La inscripción está CANCELADA: no permite el ingreso.'
+    };
+    if (c.inscripcion.estado !== 'CONFIRMADA') {
+      return rechazar(motivos[c.inscripcion.estado] || `La inscripción está en estado ${c.inscripcion.estado || 'desconocido'}: no permite el ingreso.`);
+    }
+    return [{ json: c }];
+  }), [7, 1]);
+
+  const gen = wf.code('Generar checkin_id', js(BASE_JS, function () {
+    const c = $input.first().json;
+    const COLS = __COLS_Inscripciones__;
+    const pick = (o) => Object.fromEntries(COLS.map((k) => [k, o?.[k] ?? '']));
+    const i = c.inscripcion || {};
+    const e = c.evento || {};
+    const checkin_id = genId('CHK');
+    const exitoso = !c.resultado;
+    const resultado = exitoso ? 'EXITOSO' : c.resultado;
+    const detalle = exitoso ? `Ingreso registrado: ${i.estado} → ASISTIO` : c.detalle;
+    // Cada intento queda registrado en EP11_Checkin, sea EXITOSO, RECHAZADO o DUPLICADO
+    const checkin = { checkin_id, inscripcion_id: c.inscripcion_id, evento_id: c.evento_id, usuario_id: i.usuario_id || '',
+      fecha_checkin: ahora, resultado, detalle };
+    const data = { resultado, checkin_id: exitoso ? checkin_id : (c.checkin_previo || checkin_id),
+      inscripcion_id: c.inscripcion_id, evento_id: c.evento_id, usuario_id: i.usuario_id || '',
+      asistente: i.nombre_acreditacion || '', evento_nombre: e.nombre || '', fecha_checkin: ahora,
+      estado_inscripcion: exitoso ? 'ASISTIO' : (i.estado || ''), detalle };
+    if (!exitoso) {
+      return [{ json: { resultado, checkin, status: c.status, body: { success: false, error: detalle, data } } }];
+    }
+    const hora = DateTime.fromISO(ahora).setZone(TZ).setLocale('es').toFormat("d 'de' LLLL, yyyy 'a las' HH:mm");
+    return [{ json: {
+      resultado, checkin, status: 200,
+      body: { success: true, message: 'Check-in realizado correctamente.', data },
+      // Solo cambia la fila de esta inscripción (se actualiza por inscripcion_id)
+      row: { ...pick(i), estado: 'ASISTIO', fecha_actualizacion: ahora },
+      audit: { auditoria_id: genId('AUD'), inscripcion_id: i.inscripcion_id, usuario_id: i.usuario_id, evento_id: i.evento_id,
+        accion: 'CHECKIN', estado_anterior: i.estado, estado_nuevo: 'ASISTIO', fecha: ahora, resultado: 'OK',
+        detalle: `Check-in ${checkin_id}` },
+      notif: { usuario_id: i.usuario_id, tipo: 'CHECKIN_EXITOSO', titulo: `Ingreso registrado: ${e.nombre}`,
+        mensaje: `¡Te damos la bienvenida, ${i.nombre_acreditacion || ''}! Registramos tu ingreso a "${e.nombre}".\n` +
+          `Fecha y hora de ingreso: ${hora}\nLugar: ${e.lugar}\nInscripción: ${i.inscripcion_id}\nCheck-in: ${checkin_id}`,
+        evento_id: e.evento_id, inscripcion_id: i.inscripcion_id, clave_idempotencia: `CHECKIN|${i.inscripcion_id}` }
+    } }];
+  }), [8, 1]);
+
+  const ok = wf.ifTrue('¿Check-in exitoso?', "={{ $json.resultado === 'EXITOSO' }}", [9, 1]);
+  const [fi, wi] = wf.rowWriter('Actualizar inscripción a ASISTIO', "$('Generar checkin_id').first().json.row", 'update',
+    'EP06_Inscripciones', 'Inscripciones', [10, 0], 'inscripcion_id');
+  const [fa, wa] = wf.rowWriter('Auditoría inscripciones', "$('Generar checkin_id').first().json.audit", 'append',
+    'EP06_Inscripciones', 'Auditoria_Inscripciones', [12, 0]);
+  const [fc, wc] = wf.rowWriter('Registrar check-in', "$('Generar checkin_id').first().json.checkin", 'append',
+    'EP11_Checkin', 'Checkins', [14, 1]);
+  const out = wf.respond('Responder', 'Generar checkin_id', [16, 1]);
+  const cond = wf.ifTrue('¿Requiere notificación?', "={{ Boolean($('Generar checkin_id').first().json.notif) }}", [17, 1]);
+  const dn = wf.code('Datos de notificación', "return [{ json: $('Generar checkin_id').first().json.notif }];", [18, 0]);
+  const nt = wf.notify('Notificar (WF09)', [19, 0]);
+
+  wf.chain(wh, r1, r2, r3, v1, v2, v3, v4, gen, ok);
+  wf.connect(ok, fi, 0);
+  wf.connect(ok, fc, 1);
+  wf.connect(wi, fa);
+  wf.connect(wa, fc);
+  wf.chain(wc, out, cond);
+  wf.connect(cond, dn, 0);
+  wf.connect(dn, nt);
+  wf.save('WF11_checkin_digital.json');
+}
+
+// ===========================================================================
+// WF00 — Crear los Google Sheets (se ejecuta una sola vez al configurar)
 // ===========================================================================
 function wf00() {
   const wf = new Workflow('WF00 - Crear Google Sheets de EventPass');
@@ -1337,8 +1470,11 @@ function wf00() {
       EP07_Reasignaciones: ['Reasignaciones'],
       EP08_Recordatorios: ['Recordatorios'],
       EP09_Notificaciones: ['Notificaciones'],
-      EP10_Soporte: ['Conversaciones', 'Mensajes']
+      EP10_Soporte: ['Conversaciones', 'Mensajes'],
+      EP11_Checkin: ['Checkins']
     };
+    // Opcional: { "archivos": ["EP11_Checkin"] } crea solo esos archivos (para no duplicar los que ya existen)
+    const solo = $('Webhook').first().json.body?.archivos;
     const ahora = new Date().toISOString();
     const enDias = (n) => DateTime.now().setZone('__CFG_timezone__').plus({ days: n }).toFormat('yyyy-MM-dd');
     const evento = (id, nombre, categoria, descripcion, dias, hora, lugar, capacidad, imagen, organizador, estado) => ({
@@ -1386,7 +1522,7 @@ function wf00() {
         nombre_acreditacion: `Asistente Demo ${n}`, observaciones: 'Dato de prueba', origen: 'SEMILLA' }))
     };
 
-    return Object.entries(ARCHIVOS).map(([archivo, hojas]) => ({ json: {
+    return Object.entries(ARCHIVOS).filter(([archivo]) => !Array.isArray(solo) || solo.includes(archivo)).map(([archivo, hojas]) => ({ json: {
       archivo,
       hojas: hojas.map((h) => ({
         titulo: h,
@@ -1426,7 +1562,7 @@ function wf00() {
 
 // ===========================================================================
 console.log('Generando workflows de EventPass...');
-[wf00, wf01, wf02, wf03, wf04, wf05, wf06, wf07, wf08, wf09, wf10].forEach((fn) => fn());
+[wf00, wf01, wf02, wf03, wf04, wf05, wf06, wf07, wf08, wf09, wf10, wf11].forEach((fn) => fn());
 const faltan = Object.entries(CFG.sheets).filter(([, v]) => !v).map(([k]) => k);
 if (faltan.length) console.log(`\nAviso: faltan IDs de Google Sheets en config.json: ${faltan.join(', ')}`);
 if (!CFG.wf09_id) console.log('Aviso: falta wf09_id (importa primero WF09 y copia su ID de la URL).');
